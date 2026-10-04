@@ -12,10 +12,6 @@ services:
       context: ./backend
     env_file:
       - ./.env
-    environment:
-      TYPEDASH_DB_HOST: postgres
-      TYPEDASH_DB_PORT: 5432
-      TYPEDASH_STORAGE: postgres
     ports:
       - "8000:8000"
     depends_on:
@@ -25,9 +21,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${TYPEDASH_DB_NAME}
-      POSTGRES_USER: ${TYPEDASH_DB_USERNAME}
-      POSTGRES_PASSWORD: ${TYPEDASH_DB_PASSWORD}
+      POSTGRES_DB: "${TYPEDASH_DB_NAME:?TYPEDASH_DB_NAME must be set in .env}"
+      POSTGRES_USER: "${TYPEDASH_DB_USERNAME:?TYPEDASH_DB_USERNAME must be set in .env}"
+      POSTGRES_PASSWORD: "${TYPEDASH_DB_PASSWORD:?TYPEDASH_DB_PASSWORD must be set in .env}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

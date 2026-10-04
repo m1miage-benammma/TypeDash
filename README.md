@@ -8,11 +8,10 @@ content and a local progress history.
 
 ## Run with Docker
 
-Create a private .env in this directory containing:
-
-    TYPEDASH_DB_NAME=typedash
-    TYPEDASH_DB_USERNAME=typedash_user
-    TYPEDASH_DB_PASSWORD=choose_a_private_password
+Create a private `.env` in this directory and define all of these variables:
+`TYPEDASH_STORAGE`, `TYPEDASH_DB_HOST`, `TYPEDASH_DB_PORT`,
+`TYPEDASH_DB_NAME`, `TYPEDASH_DB_USERNAME` and `TYPEDASH_DB_PASSWORD`.
+Keep their real values out of source code and never commit this file.
 
 Then run:
 
@@ -25,6 +24,9 @@ Then run:
 The services are Angular served by Nginx, FastAPI and PostgreSQL 16. PostgreSQL
 uses a persistent named volume and is not exposed on a public port. No
 .dockerignore or requirements.txt file is used.
+
+Database settings are injected into the backend container at runtime. They are
+not copied into either Docker image and are never exposed to the Angular app.
 
 ## Local development
 

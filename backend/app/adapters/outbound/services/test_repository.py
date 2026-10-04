@@ -36,7 +36,9 @@ class PostgresTestRepository:
         import psycopg
         self.connect = lambda: psycopg.connect(
             host=settings.db_host, port=settings.db_port, dbname=settings.db_name,
-            user=settings.db_username, password=settings.db_password, connect_timeout=5,
+            user=settings.db_username,
+            password=settings.db_password.get_secret_value(),
+            connect_timeout=5,
         )
 
     def initialize(self):

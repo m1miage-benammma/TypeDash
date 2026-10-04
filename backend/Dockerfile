@@ -2,6 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Database credentials are injected at container runtime through Docker Compose.
+# Never add database secrets with ARG, ENV, or COPY in this image.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 RUN pip install --no-cache-dir \
     "fastapi>=0.115,<1.0" \
     "uvicorn[standard]>=0.30,<1.0" \
