@@ -1,0 +1,57 @@
+<article class="py-14 max-[700px]:py-9">
+  <header class="mx-auto max-w-[820px] text-center">
+    <p class="mb-4 text-[10px] font-bold tracking-[.2em] text-[var(--accent)]">{{ page().eyebrow }}</p>
+    <h1 class="text-[clamp(34px,5vw,58px)] leading-[1.08] font-semibold tracking-[-.04em] text-[var(--ink)]">{{ page().title }}</h1>
+    <p class="mx-auto mt-6 max-w-[700px] text-base leading-8 text-[var(--muted)]">{{ page().summary }}</p>
+  </header>
+
+  @if (isCalculator()) {
+    <section class="mx-auto mt-12 max-w-[900px] rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7 shadow-[var(--shadow)] max-[600px]:p-5" [attr.aria-label]="t('calculator')">
+      <div class="grid grid-cols-3 gap-4 max-[650px]:grid-cols-1">
+        <label class="grid gap-2 text-xs font-semibold text-[var(--muted)]">
+          {{ t('typedCharacters') }}
+          <input class="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-base text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+            type="number" min="0" max="100000" [value]="characters()" (input)="setCharacters($event)" />
+        </label>
+        <label class="grid gap-2 text-xs font-semibold text-[var(--muted)]">
+          {{ t('elapsedSeconds') }}
+          <input class="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-base text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+            type="number" min="1" max="3600" [value]="seconds()" (input)="setSeconds($event)" />
+        </label>
+        <label class="grid gap-2 text-xs font-semibold text-[var(--muted)]">
+          {{ t('typingErrors') }}
+          <input class="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-base text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+            type="number" min="0" [max]="characters()" [value]="errors()" (input)="setErrors($event)" />
+        </label>
+      </div>
+      <div class="mt-6 grid grid-cols-3 gap-3 max-[650px]:grid-cols-1">
+        <div class="rounded-xl bg-[var(--surface-soft)] p-4"><span class="text-[10px] font-bold tracking-wide text-[var(--muted)]">{{ t('grossWpm') }}</span><strong class="mt-2 block text-3xl">{{ grossWpm() | number:'1.0-1' }}</strong></div>
+        <div class="rounded-xl bg-[var(--brand-tint)] p-4"><span class="text-[10px] font-bold tracking-wide text-[var(--muted)]">{{ t('adjustedWpm') }}</span><strong class="mt-2 block text-3xl text-[var(--brand-text)]">{{ adjustedWpm() | number:'1.0-1' }}</strong></div>
+        <div class="rounded-xl bg-[var(--accent-tint)] p-4"><span class="text-[10px] font-bold tracking-wide text-[var(--muted)]">{{ t('accuracy') }}</span><strong class="mt-2 block text-3xl">{{ calculatedAccuracy() | number:'1.0-1' }}%</strong></div>
+      </div>
+    </section>
+  }
+
+  <div class="mx-auto mt-14 grid max-w-[900px] gap-10">
+    @for (section of page().sections; track section.title) {
+      <section class="border-t border-[var(--line)] pt-9">
+        <h2 class="text-2xl font-semibold tracking-[-.025em] text-[var(--ink)]">{{ section.title }}</h2>
+        @for (paragraph of section.paragraphs; track paragraph) {
+          <p class="mt-4 text-[15px] leading-8 text-[var(--muted)]">{{ paragraph }}</p>
+        }
+        @if (section.bullets) {
+          <ul class="mt-5 grid gap-3 text-[15px] leading-7 text-[var(--ink)]">
+            @for (bullet of section.bullets; track bullet) {
+              <li class="flex gap-3"><span class="mt-[11px] size-1.5 shrink-0 rounded-full bg-[var(--accent)]"></span><span>{{ bullet }}</span></li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </div>
+
+  <aside class="mx-auto mt-14 flex max-w-[900px] items-center justify-between gap-8 rounded-2xl bg-[var(--uga-navy)] p-8 text-[var(--uga-white)] max-[650px]:flex-col max-[650px]:items-start max-[650px]:p-6">
+    <div><h2 class="text-xl font-semibold">{{ page().ctaTitle }}</h2><p class="mt-2 max-w-[620px] text-sm leading-6 text-white/70">{{ page().ctaText }}</p></div>
+    <a class="shrink-0 rounded-lg bg-[var(--uga-white)] px-5 py-3 text-xs font-bold text-[var(--uga-navy)] shadow-[inset_0_-3px_0_var(--accent)]" [routerLink]="typingTestPath()">{{ page().ctaLabel }}</a>
+  </aside>
+</article>

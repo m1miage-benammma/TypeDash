@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
+from uuid import UUID
 
 from app.domain.enums.typing import Difficulty, Language, SessionStatus
 
@@ -16,6 +17,7 @@ class CreateTypingTestRequest(BaseModel):
 class TypingProgressRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    device_id: UUID
     typed: str = Field(default="", max_length=100000)
     revision: int = Field(ge=0, le=1000000)
 

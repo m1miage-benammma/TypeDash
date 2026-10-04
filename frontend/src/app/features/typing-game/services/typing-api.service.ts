@@ -12,14 +12,21 @@ export class TypingApiService {
   prepare(options: TestOptions): Observable<TypingTest> {
     return this.unwrap(this.http.post<ApiResponse<TypingTest>>(this.url, options));
   }
-  get(id: string): Observable<TypingTest> {
-    return this.unwrap(this.http.get<ApiResponse<TypingTest>>(this.url + '/' + id));
+  get(id: string, deviceId: string | null = null): Observable<TypingTest> {
+    const query = deviceId ? '?device_id=' + encodeURIComponent(deviceId) : '';
+    return this.unwrap(this.http.get<ApiResponse<TypingTest>>(this.url + '/' + id + query));
   }
-  progress(id: string, typed: string, revision: number): Observable<TypingTest> {
-    return this.unwrap(this.http.put<ApiResponse<TypingTest>>(this.url + '/' + id + '/progress', { typed, revision }));
+  progress(id: string, deviceId: string, typed: string, revision: number): Observable<TypingTest> {
+    return this.unwrap(this.http.put<ApiResponse<TypingTest>>(
+      this.url + '/' + id + '/progress',
+      { device_id: deviceId, typed, revision },
+    ));
   }
-  finish(id: string, typed: string, revision: number): Observable<TypingTest> {
-    return this.unwrap(this.http.post<ApiResponse<TypingTest>>(this.url + '/' + id + '/finish', { typed, revision }));
+  finish(id: string, deviceId: string, typed: string, revision: number): Observable<TypingTest> {
+    return this.unwrap(this.http.post<ApiResponse<TypingTest>>(
+      this.url + '/' + id + '/finish',
+      { device_id: deviceId, typed, revision },
+    ));
   }
   private unwrap(source: Observable<ApiResponse<TypingTest>>): Observable<TypingTest> {
     return source.pipe(timeout(10000), map(response => response.data));

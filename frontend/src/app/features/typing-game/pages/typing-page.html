@@ -13,6 +13,32 @@
   </div>
 }
 
+@if (registrationModal()) {
+  <div class="modal-backdrop">
+    <section class="modal registration-modal" role="dialog" aria-modal="true"
+      [attr.aria-label]="t('registrationTitle')">
+      <span class="modal-icon"><td-icon name="trophy" /></span>
+      <h2>{{ t('registrationTitle') }}</h2>
+      <p>{{ t('registrationHint') }}</p>
+      <form class="registration-form" (submit)="registerUsername(); $event.preventDefault()">
+        <label for="username">{{ t('username') }}</label>
+        <input #usernameInput id="username" type="text" minlength="3" maxlength="24"
+          autocomplete="username" autocapitalize="none" spellcheck="false"
+          [value]="usernameDraft()" [disabled]="registering()"
+          [attr.aria-invalid]="!!usernameError()" aria-describedby="username-feedback"
+          (input)="validateUsername($event)" [placeholder]="t('usernamePlaceholder')" />
+        <span id="username-feedback" class="field-help" [class.invalid]="usernameError()">
+          {{ t(usernameError() ?? 'usernameRules') }}
+        </span>
+        <button class="primary-button" type="submit" [disabled]="registering() || !!usernameError()">
+          @if (registering()) { <span class="spinner"></span> }
+          {{ t(registering() ? 'registering' : 'saveUsername') }}
+        </button>
+      </form>
+    </section>
+  </div>
+}
+
 <section class="hero">
   <div>
     <h1>{{ t('headline') }} <em>{{ t('flow') }}</em></h1>
@@ -187,12 +213,12 @@
     </div>
     <div class="metric-card">
       <div class="metric-icon"><td-icon name="bolt" /></div>
-      <div><span>{{ t(engaged() ? 'wpm' : 'medianSpeed') }}</span><strong>{{ (engaged() ? metrics().wpm : medianWpm()) | number:'1.0-1' }}</strong></div>
+      <div><span>{{ t(engaged() ? 'wpm' : 'averageSpeed') }}</span><strong>{{ (engaged() ? metrics().wpm : averageWpm()) | number:'1.0-1' }}</strong></div>
       <span class="metric-unit">WPM</span>
     </div>
     <div class="metric-card">
       <div class="metric-icon"><td-icon name="target" /></div>
-      <div><span>{{ t(engaged() ? 'accuracy' : 'medianAccuracy') }}</span><strong>{{ (engaged() ? metrics().accuracy : medianAccuracy()) | number:'1.0-1' }}<small>%</small></strong></div>
+      <div><span>{{ t(engaged() ? 'accuracy' : 'averageAccuracy') }}</span><strong>{{ (engaged() ? metrics().accuracy : averageAccuracy()) | number:'1.0-1' }}<small>%</small></strong></div>
     </div>
   </section>
 }

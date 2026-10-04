@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">TypeDash typing practice</title>
+  <desc id="description">TypeDash social preview in the Université Grenoble Alpes colour palette.</desc>
+  <rect width="1200" height="630" fill="#FFFFFF"/>
+  <rect x="52" y="52" width="1096" height="526" rx="36" fill="#F7F8FC" stroke="#D9DCE7" stroke-width="2"/>
+  <rect x="104" y="113" width="92" height="92" rx="24" fill="#2A2E47"/>
+  <path d="M129 164h15l13-28h14l-12 28h14l12-28h14l-18 42h-15l7-16h-14l-7 16h-14l7-16h-16z" fill="#FFFFFF"/>
+  <path d="M158 184l13-23 13 23z" fill="#E84E10"/>
+  <text x="224" y="179" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" fill="#2A2E47">typedash</text>
+  <text x="104" y="320" font-family="Arial, Helvetica, sans-serif" font-size="66" font-weight="700" fill="#2A2E47">Type faster. Type better.</text>
+  <text x="104" y="386" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="#656A80">Free bilingual typing tests, practical guides and progress tracking.</text>
+  <rect x="104" y="449" width="286" height="66" rx="14" fill="#E84E10"/>
+  <text x="247" y="492" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#FFFFFF">Start a typing test</text>
+</svg>

@@ -1,0 +1,62 @@
+@startuml TypeDashDatabase
+hide methods
+hide stereotypes
+skinparam linetype ortho
+skinparam entity {
+  BackgroundColor #F7FAF7
+  BorderColor #315C42
+  ArrowColor #315C42
+}
+
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  * username : VARCHAR(24)
+  * username_key : VARCHAR(24) <<UQ>>
+  * username_changes : SMALLINT = 0
+  * created_at : TIMESTAMPTZ
+  * updated_at : TIMESTAMPTZ
+}
+
+entity "devices" as devices {
+  * id : UUID <<PK>>
+  --
+  user_id : UUID <<FK, nullable>>
+  * created_at : TIMESTAMPTZ
+  * last_seen_at : TIMESTAMPTZ
+}
+
+entity "typing_stats" as typing_stats {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  * source_test_id : UUID <<UQ>>
+  * difficulty : VARCHAR(16)
+  * language : VARCHAR(2)
+  * duration_seconds : SMALLINT
+  * punctuation : BOOLEAN
+  * numbers : BOOLEAN
+  * wpm : NUMERIC(7,2)
+  * accuracy : NUMERIC(5,2)
+  * correct_characters : INTEGER
+  * incorrect_characters : INTEGER
+  * typed_characters : INTEGER
+  * completed_words : INTEGER
+  * elapsed_seconds : NUMERIC(8,2)
+  * finished_at : TIMESTAMPTZ
+  * created_at : TIMESTAMPTZ
+}
+
+users |o--o{ devices : owns
+devices ||--o{ typing_stats : records
+
+note right of devices
+  The browser creates the UUID and stores it
+  in localStorage on the first typed character.
+end note
+
+note right of typing_stats
+  source_test_id is unique so saving a finished
+  typing test more than once stays idempotent.
+end note
+@enduml

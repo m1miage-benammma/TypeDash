@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
@@ -14,7 +14,14 @@ RUN pip install --no-cache-dir \
     "psycopg[binary]>=3.2,<4.0" \
     "regex>=2024.11.6"
 
-COPY app ./app
+FROM runtime AS development
 
+COPY app ./app
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]
+
+FROM runtime AS production
+
+COPY app ./app
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -9,10 +9,17 @@ export function writeLocal(key: string, value: unknown): void {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Private browsing may restrict storage. */ }
 }
 
+function initialLanguage(): Language {
+  const saved = readLocal<unknown>('typedash.language', null);
+  if (saved === 'fr' || saved === 'en') return saved;
+  const browserLanguage = typeof navigator === 'undefined' ? 'en' : navigator.language.toLowerCase();
+  return browserLanguage === 'fr' || browserLanguage.startsWith('fr-') ? 'fr' : 'en';
+}
+
 @Injectable({ providedIn: 'root' })
 export class PreferencesService {
   private readonly document = inject(DOCUMENT);
-  readonly language = signal<Language>(readLocal<string>('typedash.language', 'en') === 'fr' ? 'fr' : 'en');
+  readonly language = signal<Language>(initialLanguage());
   readonly dark = signal(readLocal<boolean>('typedash.dark', false) === true);
   readonly singleLine = signal(readLocal<boolean>('typedash.single-line', false) === true);
   constructor() { this.apply(); }
@@ -36,7 +43,10 @@ export class PreferencesService {
     };
   }
   private apply(): void {
-    this.document.documentElement.dataset['theme'] = this.dark() ? 'dark' : 'light';
+    const dark = this.dark();
+    this.document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     this.document.documentElement.lang = this.language();
+    const favicon = this.document.getElementById('app-favicon') as HTMLLinkElement | null;
+    if (favicon) favicon.href = dark ? 'typedash-logo-dark.svg' : 'typedash-logo.svg';
   }
 }

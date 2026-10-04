@@ -15,6 +15,7 @@ class CreateTypingTestCommand:
 @dataclass(frozen=True)
 class UpdateTypingTestCommand:
     test_id: str
+    device_id: str
     typed: str
     revision: int
     finish: bool = False

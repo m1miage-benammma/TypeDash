@@ -2,18 +2,30 @@ services:
   frontend:
     build:
       context: ./frontend
+      target: development
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     ports:
-      - "4200:80"
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
     depends_on:
       - backend
 
   backend:
     build:
       context: ./backend
+      target: development
     env_file:
       - ./.env
+    environment:
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,3 +46,4 @@ services:
 
 volumes:
   postgres_data:
+  frontend_node_modules:

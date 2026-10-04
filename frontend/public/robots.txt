@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /en/progress
+Disallow: /fr/progres
+
+Sitemap: https://typedash.com/sitemap.xml

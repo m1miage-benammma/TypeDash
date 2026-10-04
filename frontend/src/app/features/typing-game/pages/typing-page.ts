@@ -1,14 +1,15 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, ElementRef, inject, signal, untracked, ViewChild } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EMPTY, Subject, auditTime, catchError, exhaustMap, filter, finalize, interval, merge, switchMap, takeUntil, tap } from 'rxjs';
 
 import { I18nService } from '../../../core/services/i18n.service';
+import { DeviceIdentityService } from '../../../core/services/device-identity.service';
 import { PreferencesService, writeLocal } from '../../../core/services/preferences.service';
+import { isValidUsername, normalizeUsername } from '../../../core/validation/username';
 import { Icon } from '../../../shared/components/icon/icon';
 import { Difficulty, Metrics, TestOptions, TypingTest } from '../models/typing-test';
-import { HistoryService, median } from '../services/history.service';
 import { TypingApiService } from '../services/typing-api.service';
 
 const EMPTY_METRICS: Metrics = {
@@ -34,13 +35,14 @@ export class TypingPage {
   readonly Math = Math;
   readonly i18n = inject(I18nService);
   readonly preferences = inject(PreferencesService);
+  readonly identity = inject(DeviceIdentityService);
   private readonly api = inject(TypingApiService);
-  private readonly history = inject(HistoryService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly viewport = window.matchMedia('(max-width: 560px)');
 
   @ViewChild('customInput') customInput?: ElementRef<HTMLInputElement>;
   @ViewChild('passage') passage?: ElementRef<HTMLElement>;
+  @ViewChild('usernameInput') usernameInput?: ElementRef<HTMLInputElement>;
 
   readonly t = this.i18n.t.bind(this.i18n);
   readonly options = signal<TestOptions>(this.preferences.loadOptions());
@@ -59,19 +61,24 @@ export class TypingPage {
   readonly customOpen = signal(false);
   readonly customDraft = signal(String(this.options().duration));
   readonly durationError = signal<'durationMax' | 'durationInvalid' | null>(null);
+  readonly registrationModal = signal(false);
+  readonly registering = signal(false);
+  readonly usernameDraft = signal('');
+  readonly usernameError = signal<'usernameInvalid' | 'usernameTaken' | 'registrationFailed' | null>(null);
   readonly isMobile = signal(this.viewport.matches);
   readonly durations = [15, 30, 60] as const;
-  readonly entries = toSignal(this.history.history$, { initialValue: this.history.current });
+  readonly entries = computed(() => this.identity.profile()?.stats ?? []);
   readonly best = computed(() => Math.max(0, ...this.entries().map(entry => entry.wpm)));
-  readonly medianWpm = computed(() => median(this.entries().map(entry => entry.wpm)));
-  readonly medianAccuracy = computed(() => median(this.entries().map(entry => entry.accuracy)));
+  readonly averageWpm = computed(() => this.identity.profile()?.summary.average_wpm ?? 0);
+  readonly averageAccuracy = computed(() => this.identity.profile()?.summary.average_accuracy ?? 0);
   readonly engaged = computed(() => this.test()?.status === 'running' || this.test()?.status === 'paused');
   readonly running = computed(() => this.test()?.status === 'running' && !this.finishing() && !this.saveError());
   readonly locked = computed(() => this.engaged() || this.finishing() || this.saveError());
   readonly result = computed(() => this.test()?.result ?? null);
   readonly canType = computed(() =>
     !!this.test() && !this.result() && !this.loading() && !this.loadError()
-    && !this.finishing() && !this.saveError() && !this.durationError() && !this.restartModal());
+    && !this.finishing() && !this.saveError() && !this.durationError()
+    && !this.restartModal() && !this.registrationModal());
   readonly customSelected = computed(() => !this.durations.includes(this.options().duration as 15 | 30 | 60));
   readonly singleLineMode = computed(() => this.isMobile() || this.preferences.singleLine());
   readonly clock = computed(() => {
@@ -134,7 +141,12 @@ export class TypingPage {
       exhaustMap(() => {
         const current = this.test()!;
         const sentAt = performance.now();
-        return this.api.progress(current.id, this.typed(), this.revision).pipe(
+        return this.api.progress(
+          current.id,
+          this.identity.ensureDeviceId(),
+          this.typed(),
+          this.revision,
+        ).pipe(
           takeUntil(this.stopProgress),
           tap(test => this.acceptProgress(test, sentAt)),
           catchError(() => { this.offline.set(true); return EMPTY; }),
@@ -160,6 +172,16 @@ export class TypingPage {
         writeLocal('typedash.options', this.options());
         if (!this.locked()) this.prepare();
       });
+    });
+
+    effect(() => {
+      const profile = this.identity.profile();
+      if (profile && !profile.registered && profile.summary.sessions > 0) {
+        untracked(() => {
+          this.registrationModal.set(true);
+          setTimeout(() => this.usernameInput?.nativeElement.focus());
+        });
+      }
     });
 
     this.restoreOrPrepare();
@@ -366,6 +388,7 @@ export class TypingPage {
     const text = graphemes(value).slice(0, this.promptLength).join('');
     if (text === this.typed()) return;
 
+    this.identity.ensureDeviceId();
     this.typed.set(text);
     this.revision += 1;
     this.lastInputAt = performance.now();
@@ -415,9 +438,16 @@ export class TypingPage {
     this.stopProgress.next();
     this.finishing.set(true);
     this.saveError.set(false);
-    this.api.finish(test.id, this.typed(), this.revision).pipe(
+    this.api.finish(
+      test.id,
+      this.identity.ensureDeviceId(),
+      this.typed(),
+      this.revision,
+    ).pipe(
       catchError((error: HttpErrorResponse) => {
-        if (error.error?.error?.code === 'still_running') return this.api.get(test.id);
+        if (error.error?.error?.code === 'still_running') {
+          return this.api.get(test.id, this.identity.deviceId());
+        }
         throw error;
       }),
       takeUntilDestroyed(this.destroyRef),
@@ -444,11 +474,46 @@ export class TypingPage {
     this.test.set(test);
     this.metrics.set(test.metrics);
     this.remaining.set(0);
-    this.history.add(test);
     this.clearActive();
     this.offline.set(false);
     this.saveError.set(false);
     this.finishing.set(false);
+    this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: profile => {
+        if (profile && !profile.registered) {
+          this.registrationModal.set(true);
+          setTimeout(() => this.usernameInput?.nativeElement.focus());
+        }
+      },
+      error: () => this.offline.set(true),
+    });
+  }
+
+  validateUsername(event: Event): void {
+    const username = (event.target as HTMLInputElement).value;
+    this.usernameDraft.set(username);
+    this.usernameError.set(isValidUsername(username) ? null : 'usernameInvalid');
+  }
+
+  registerUsername(): void {
+    const username = normalizeUsername(this.usernameDraft());
+    if (!isValidUsername(username)) {
+      this.usernameError.set('usernameInvalid');
+      return;
+    }
+    this.registering.set(true);
+    this.usernameError.set(null);
+    this.identity.register(username).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.registering.set(false)),
+    ).subscribe({
+      next: () => this.registrationModal.set(false),
+      error: (error: HttpErrorResponse) => {
+        this.usernameError.set(
+          error.error?.error?.code === 'username_taken' ? 'usernameTaken' : 'registrationFailed',
+        );
+      },
+    });
   }
 
   private remember(): void {
@@ -476,7 +541,7 @@ export class TypingPage {
     }
 
     const saved = active;
-    this.api.get(saved.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.get(saved.id, this.identity.deviceId()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: test => {
         this.options.set({
           difficulty: test.difficulty,

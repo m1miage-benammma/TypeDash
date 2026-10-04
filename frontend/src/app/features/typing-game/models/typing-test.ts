@@ -38,10 +38,6 @@ export interface TypingTest extends TestOptions {
   result: TestResult | null;
 }
 
-export interface HistoryEntry extends TestOptions, TestResult {
-  id: string;
-}
-
 export interface ApiResponse<T> {
   data: T;
 }

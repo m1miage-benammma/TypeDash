@@ -30,17 +30,33 @@ def prepare(body: CreateTypingTestRequest, service: Service):
 
 
 @router.get("/{test_id}", response_model=ApiResponse[TypingTestResponse])
-def get_test(test_id: UUID, service: Service):
-    return {"data": service.get(str(test_id))}
+def get_test(test_id: UUID, service: Service, device_id: UUID | None = None):
+    return {
+        "data": service.get(
+            str(test_id),
+            str(device_id) if device_id else None,
+        )
+    }
 
 
 @router.put("/{test_id}/progress", response_model=ApiResponse[TypingTestResponse])
 def progress(test_id: UUID, body: TypingProgressRequest, service: Service):
-    command = UpdateTypingTestCommand(str(test_id), body.typed, body.revision)
+    command = UpdateTypingTestCommand(
+        test_id=str(test_id),
+        device_id=str(body.device_id),
+        typed=body.typed,
+        revision=body.revision,
+    )
     return {"data": service.progress(command)}
 
 
 @router.post("/{test_id}/finish", response_model=ApiResponse[TypingTestResponse])
 def finish(test_id: UUID, body: TypingProgressRequest, service: Service):
-    command = UpdateTypingTestCommand(str(test_id), body.typed, body.revision, finish=True)
+    command = UpdateTypingTestCommand(
+        test_id=str(test_id),
+        device_id=str(body.device_id),
+        typed=body.typed,
+        revision=body.revision,
+        finish=True,
+    )
     return {"data": service.progress(command)}

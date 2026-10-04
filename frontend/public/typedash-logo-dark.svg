@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="TypeDash">
+  <rect x="0.75" y="0.75" width="38.5" height="38.5" rx="9.25" fill="#2A2E47" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+  <g transform="skewX(-16)">
+    <rect x="14" y="14" width="5" height="16" rx="1" fill="#FFFFFF"/>
+    <rect x="22" y="8" width="5" height="24" rx="1" fill="#E84E10"/>
+    <rect x="30" y="13" width="5" height="15" rx="1" fill="#FFFFFF"/>
+  </g>
+</svg>
