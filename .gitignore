@@ -1,0 +1,22 @@
+# Dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+backend/.venv/
+backend/__pycache__/
+backend/**/*.py[cod]
+.pytest_cache/
+
+# Local configuration
+.env
+.env.*
+AGENT_INSTRUCTIONS.md
+.angular/
+.venv/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

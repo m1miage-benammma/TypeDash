@@ -1,0 +1,30 @@
+<div class="site-shell">
+  <header class="site-header">
+    <a class="brand" routerLink="/" aria-label="TypeDash">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      type<span>dash</span><span class="brand-dot">.</span>
+    </a>
+    <nav class="main-nav" aria-label="Main">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ t('practice') }}</a>
+      <a routerLink="/progress" routerLinkActive="active">{{ t('progress') }}</a>
+    </nav>
+    <div class="header-actions">
+      <div class="language-switch" role="group" [attr.aria-label]="t('language')">
+        <button [class.selected]="preferences.language() === 'en'" [attr.aria-pressed]="preferences.language() === 'en'" (click)="setLanguage('en')" aria-label="English">EN</button>
+        <button [class.selected]="preferences.language() === 'fr'" [attr.aria-pressed]="preferences.language() === 'fr'" (click)="setLanguage('fr')" aria-label="Français">FR</button>
+      </div>
+      <span class="header-divider"></span>
+      <button class="icon-button" (click)="preferences.toggleTheme()" [attr.aria-label]="t(preferences.dark() ? 'themeLight' : 'themeDark')">
+        <td-icon [name]="preferences.dark() ? 'sun' : 'moon'" />
+      </button>
+    </div>
+  </header>
+
+  <main><router-outlet /></main>
+
+  <footer class="site-footer">
+    <span class="footer-brand">typedash<span>.</span></span>
+    <span>{{ t('footer') }}</span>
+    <span class="privacy-note"><td-icon name="shield" />{{ t('local') }}</span>
+  </footer>
+</div>

@@ -1,0 +1,68 @@
+@if (confirmClear()) {
+  <div class="modal-backdrop" (click)="confirmClear.set(false)">
+    <section class="modal" role="dialog" aria-modal="true" [attr.aria-label]="t('clear')" (click)="$event.stopPropagation()">
+      <span class="modal-icon"><td-icon name="reset" /></span>
+      <h2>{{ t('clear') }}</h2>
+      <p>{{ t('clearConfirm') }}</p>
+      <div class="modal-actions">
+        <button class="secondary-button" (click)="confirmClear.set(false)">{{ t('cancel') }}</button>
+        <button class="primary-button" (click)="clearHistory()">{{ t('confirm') }}</button>
+      </div>
+    </section>
+  </div>
+}
+
+<section class="section-heading">
+  <p class="eyebrow">{{ t('progress') }}</p>
+  <h1>{{ t('progressTitle') }}</h1>
+  <p>{{ t('progressHint') }}</p>
+</section>
+
+@if (!entries().length) {
+  <div class="empty-history">
+    <span class="empty-icon"><td-icon name="chart" /></span>
+    <h2>{{ t('noHistory') }}</h2>
+    <p>{{ t('noHistoryHint') }}</p>
+    <a class="primary-button" routerLink="/">{{ t('back') }} <td-icon name="arrow" /></a>
+  </div>
+} @else {
+  <section class="progress-stats" aria-label="Progress summary">
+    <div><span>{{ t('sessions') }}</span><strong>{{ entries().length }}</strong></div>
+    <div><span>{{ t('medianSpeed') }}</span><strong>{{ medianWpm() | number:'1.0-1' }} <small>WPM</small></strong></div>
+    <div><span>{{ t('best') }}</span><strong>{{ best() | number:'1.0-0' }} <small>WPM</small></strong></div>
+    <div><span>{{ t('medianAccuracy') }}</span><strong>{{ medianAccuracy() | number:'1.0-1' }}<small>%</small></strong></div>
+  </section>
+  <div class="history-chart" role="img" [attr.aria-label]="t('chart')">
+    <div class="history-bars">
+      @for (entry of historyChart(); track entry.id) {
+        <div class="history-bar-column">
+          <span>{{ entry.wpm | number:'1.0-0' }}</span>
+          <div [style.height.px]="Math.max(4, entry.wpm / Math.max(best(), 1) * 140)"></div>
+          <small>{{ entry.finished_at | date:'dd/MM' }}</small>
+        </div>
+      }
+    </div>
+  </div>
+  <section class="history-table">
+    <div class="history-title">
+      <h2>{{ t('recent') }}</h2>
+      <button class="text-button" (click)="confirmClear.set(true)">{{ t('clear') }}</button>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>{{ t('date') }}</th><th>{{ t('test') }}</th><th>WPM</th><th>{{ t('accuracy') }}</th><th>{{ t('completeWords') }}</th></tr></thead>
+        <tbody>
+          @for (entry of entries(); track entry.id) {
+            <tr>
+              <td>{{ entry.finished_at | date:'dd/MM/yy · HH:mm' }}</td>
+              <td><span class="table-mode">{{ t(entry.difficulty) }}</span><small>{{ entry.duration }}s · {{ entry.language.toUpperCase() }} @if (entry.punctuation) { · @ } @if (entry.numbers) { · # }</small></td>
+              <td class="table-speed">{{ entry.wpm | number:'1.0-1' }}</td>
+              <td>{{ entry.accuracy | number:'1.0-1' }}%</td>
+              <td>{{ entry.completed_words }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
