@@ -170,6 +170,12 @@ jobs:
       - name: Install pinned Netlify CLI
         run: npm install --global netlify-cli@27.10.2
 
+      - name: Link Netlify project
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: netlify link --id "$NETLIFY_SITE_ID"
+
       - name: Publish production without rebuilding
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
