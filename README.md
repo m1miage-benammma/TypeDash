@@ -20,7 +20,7 @@
 
 TypeDash is a minimal typing practice application built around a distraction-free test experience. It generates English or French exercises, measures speed and accuracy on the backend, and keeps a history linked to the current browser device.
 
-The application uses an Angular frontend, a FastAPI backend organized into API, services, repositories, and models, and PostgreSQL for persistent data. Docker Compose provides a reproducible local environment with live reload for both applications.
+The application uses an Angular frontend, a FastAPI backend well organized and PostgreSQL for persistent data. Docker Compose provides a reproducible local environment with live reload for both applications.
 
 ## Features
 
@@ -31,7 +31,7 @@ The application uses an Angular frontend, a FastAPI backend organized into API, 
 - Preset durations and custom tests from 1 to 300 seconds
 - Activity-based timer that pauses after 1.2 seconds without typing
 - Multiple-line and word-by-word layouts with mobile-specific behavior
-- WPM, accuracy, completed-word, and active-time metrics
+- Word Per Minute(WPM), accuracy, completed-word, and active-time metrics
 - Device-linked usernames and progress history
 - Light and dark themes using the UGA-inspired colour palette
 - Search-friendly content pages, metadata, Open Graph, JSON-LD, sitemap, and robots directives
