@@ -19,6 +19,9 @@ class TypingStreamService:
         self.typing = typing
 
     def _load(self, request):
+        prepared = self.typing.prepared_tests.take(str(request.test_id))
+        if prepared is not None:
+            return prepared
         with self.typing.test_repository.transaction() as storage:
             return self.typing._require_test(storage, str(request.test_id))
 
@@ -59,7 +62,11 @@ class TypingStreamService:
             if test.result:
                 await asyncio.to_thread(self._persist, deepcopy(test), device_id)
                 final_saved = True
-            await socket.send_json(self.typing._response(test, utc_now(), word_by_word).model_dump(mode="json"))
+            # New clients already have the committed prompt from HTTP. Older
+            # clients retain the complete first frame during rolling deploys.
+            initial = (self._frame(test, utc_now(), word_by_word) if request.compact else
+                       self.typing._response(test, utc_now(), word_by_word).model_dump(mode="json"))
+            await socket.send_json(initial)
             while not test.result:
                 try:
                     payload = await asyncio.wait_for(socket.receive_text(), timeout=0.1)

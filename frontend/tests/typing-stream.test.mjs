@@ -22,14 +22,14 @@ class FakeSocket {
   frame(data) { this.onmessage?.({ data: JSON.stringify({ data }) }); }
 }
 
-function connect(context) {
+function connect(context, initial) {
   context.mock.timers.enable({ apis: ['setTimeout'] });
   const originalSocket = globalThis.WebSocket;
   globalThis.WebSocket = FakeSocket;
   context.after(() => { globalThis.WebSocket = originalSocket; });
   const available = [], frames = [];
   const connection = new TypingStreamService().connect('test-id', 'device-id', false,
-    frame => frames.push(frame), ready => available.push(ready));
+    frame => frames.push(frame), ready => available.push(ready), initial);
   context.after(() => connection.close());
   return { connection, available, frames, socket: FakeSocket.instances.at(-1) };
 }
@@ -73,4 +73,16 @@ test('intentional closure cancels reconnects and ignores late frames', context =
   assert.equal(FakeSocket.instances.length, count);
   assert.deepEqual(frames, []);
   assert.deepEqual(available, []);
+});
+
+test('compact first frames retain the already loaded prompt and options', context => {
+  const initial = { id: 'test-id', text: 'hello', language: 'en', duration: 30,
+    revision: -1, view: { words: ['hello'], durations: [15, 30, 60] } };
+  const { socket, frames } = connect(context, initial);
+  assert.equal(socket.url.searchParams.get('compact'), 'true');
+  socket.frame({ id: 'test-id', revision: -1, remaining_seconds: 30, view: { active: false } });
+  assert.equal(frames[0].text, 'hello');
+  assert.equal(frames[0].language, 'en');
+  assert.equal(frames[0].duration, 30);
+  assert.deepEqual(frames[0].view.words, ['hello']);
 });

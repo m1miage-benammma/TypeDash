@@ -2,7 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, ElementRef, inject, signal, untracked, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { EMPTY, Subject, Subscription, catchError, finalize, interval, switchMap, tap } from 'rxjs';
+import { EMPTY, Subject, Subscription, catchError, finalize, interval, switchMap, tap, timer } from 'rxjs';
 
 import { I18nService } from '../../../../core/services/i18n.service';
 import { DeviceIdentityService } from '../../../../core/services/device-identity.service';
@@ -43,7 +43,11 @@ export class TypingGame {
 
   readonly t = this.i18n.t.bind(this.i18n);
   readonly test = signal<TypingTest | null>(null);
-  readonly options = computed(() => this.test());
+  // UI selection is synchronous; confirmed session state stays server-owned.
+  readonly options = signal<PrepareTestRequest>({
+    duration: 30, difficulty: 'easy', punctuation: false, numbers: false,
+    ...this.preferences.loadOptions(), language: this.preferences.language(),
+  });
   readonly loading = signal(true);
   readonly loadError = signal(false);
   readonly offline = signal(false);
@@ -54,17 +58,18 @@ export class TypingGame {
   readonly durationError = signal<'durationMax' | 'durationInvalid' | null>(null);
   readonly registrationModal = signal(false);
   readonly isMobile = signal(this.viewport.matches);
-  readonly durations = computed(() => this.test()?.view.durations ?? []);
+  readonly durations = computed(() => this.test()?.view.durations ?? [15, 30, 60]);
   readonly best = computed(() => this.identity.profile()?.summary.best_wpm ?? 0);
   readonly engaged = computed(() => (this.test()?.view.active ?? false) || this.pendingInputs().length > 0);
   readonly running = computed(() => this.test()?.status === 'running');
-  readonly locked = computed(() => this.loading() || this.pendingInputs().length > 0 || this.test()?.view.can_configure === false);
-  readonly result = computed(() => this.test()?.result ?? null);
+  readonly locked = computed(() => !this.loading()
+    && (this.pendingInputs().length > 0 || this.test()?.view.can_configure === false));
+  readonly result = computed(() => this.loading() ? null : this.test()?.result ?? null);
   readonly canType = computed(() => this.test()?.view.can_type === true
     && this.test()?.language === this.preferences.language()
     && !this.loading() && !this.loadError()
     && !this.restartModal() && !this.registrationModal());
-  readonly customSelected = computed(() => this.test()?.view.custom_duration ?? false);
+  readonly customSelected = computed(() => !this.durations().includes(Number(this.options().duration)));
   readonly singleLineMode = computed(() => this.isMobile() || this.preferences.singleLine());
   private readonly displayNow = signal(performance.now());
   private readonly receivedAt = signal(performance.now());
@@ -78,11 +83,17 @@ export class TypingGame {
     return Math.max(0, test.remaining_seconds - advance);
   });
   readonly clock = computed(() => {
+    if (this.loading()) {
+      const selected = Number(this.options().duration);
+      if (!Number.isFinite(selected) || selected < 1) return '—';
+      return `${String(Math.floor(selected / 60)).padStart(2, '0')}:${String(selected % 60).padStart(2, '0')}`;
+    }
     if (!this.test()) return '—';
     const seconds = Math.ceil(this.displayedRemaining());
     return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   });
   readonly elapsedPercent = computed(() => {
+    if (this.loading()) return 0;
     const test = this.test();
     return test ? (1 - this.displayedRemaining() / test.duration) * 100 : 0;
   });
@@ -115,13 +126,16 @@ export class TypingGame {
         this.connection?.close();
         this.connection = null;
         this.pendingInputs.set([]);
-        return this.api.prepare(options).pipe(
+        // Cancel immediately on the next selection, including during this
+        // short coalescing window. Only the latest settings reach the server.
+        return timer(50).pipe(switchMap(() => this.api.prepare(options)),
           tap(test => {
             this.sequence = test.revision;
             this.offline.set(false);
             this.pasteHint.set(false);
             this.customOpen.set(false);
             this.test.set(test);
+            this.options.set(this.confirmedOptions(test));
             this.receivedAt.set(performance.now());
             this.connectStream(test);
             this.remember(test.id);
@@ -131,6 +145,8 @@ export class TypingGame {
             const code = error.error?.error?.code;
             if (code === 'duration_max' || code === 'duration_invalid') {
               this.durationError.set(code === 'duration_max' ? 'durationMax' : 'durationInvalid');
+              const confirmed = this.test();
+              if (confirmed) this.options.set(this.confirmedOptions(confirmed));
             } else this.loadError.set(true);
             return EMPTY;
           }),
@@ -143,9 +159,9 @@ export class TypingGame {
       takeUntilDestroyed(),
     ).subscribe();
 
-    interval(30).pipe(takeUntilDestroyed()).subscribe(() => {
-      this.displayNow.set(performance.now());
-      this.flushInputs();
+    interval(100).pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.running() && !this.offline()) this.displayNow.set(performance.now());
+      if (this.pendingInputs().length) this.flushInputs();
     });
 
     const viewportChanged = (event: MediaQueryListEvent): void => {
@@ -177,25 +193,31 @@ export class TypingGame {
     this.restoreOrPrepare();
   }
 
-  private requestOptions(): PrepareTestRequest {
-    const test = this.test();
-    return test ? {
+  private confirmedOptions(test: TypingTest): PrepareTestRequest {
+    return {
       difficulty: test.difficulty, duration: test.duration, language: test.language,
       punctuation: test.punctuation, numbers: test.numbers,
-    } : this.preferences.loadOptions();
+    };
+  }
+
+  private requestOptions(): PrepareTestRequest {
+    return this.options();
   }
 
   prepare(changes: PrepareTestRequest = {}): void {
     this.requestedLanguage = this.preferences.language();
     this.clearActive();
-    this.prepareRequests.next({
+    const options = {
       ...this.requestOptions(), language: this.preferences.language(),
       ...changes, word_by_word: this.singleLineMode(),
-    });
+    };
+    this.options.set(options);
+    this.loading.set(true);
+    this.prepareRequests.next(options);
   }
 
   toggleOption(option: 'punctuation' | 'numbers'): void {
-    this.prepare({ [option]: !this.options()?.[option] });
+    this.prepare({ [option]: !this.options()[option] });
   }
 
   setDuration(duration: number): void { this.prepare({ duration }); }
@@ -203,7 +225,7 @@ export class TypingGame {
   toggleCustom(): void {
     this.customOpen.update(open => !open);
     if (!this.customOpen()) return;
-    this.customDraft.set(this.customSelected() ? String(this.options()?.duration) : '');
+    this.customDraft.set(this.customSelected() ? String(this.options().duration) : '');
     this.durationError.set(null);
     setTimeout(() => this.customInput?.nativeElement.focus());
   }
@@ -247,8 +269,11 @@ export class TypingGame {
       response => this.accept(response), ready => {
         this.offline.set(!ready);
         // Replay unacknowledged sequences after reconnect; backend deduplicates.
-        if (ready) this.sentSequence = this.test()?.revision ?? -1;
-      });
+        if (ready) {
+          this.sentSequence = this.test()?.revision ?? -1;
+          this.flushInputs();
+        }
+      }, test);
   }
 
   private accept(test: TypingTest): void {
@@ -325,6 +350,7 @@ export class TypingGame {
         }
         this.sequence = test.revision;
         this.test.set(test);
+        this.options.set(this.confirmedOptions(test));
         this.receivedAt.set(performance.now());
         this.connectStream(test);
         this.loading.set(false);

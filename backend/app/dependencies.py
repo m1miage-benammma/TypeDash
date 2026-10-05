@@ -12,5 +12,7 @@ def get_username_request(device_id: UUID, body: UsernameRequest) -> DeviceUserna
     return DeviceUsernameRequest(device_id=device_id, username=body.username)
 
 
-def get_test_request(test_id: UUID, device_id: UUID | None = None, word_by_word: bool = False) -> GetTypingTestRequest:
-    return GetTypingTestRequest(test_id=test_id, device_id=device_id, word_by_word=word_by_word)
+def get_test_request(test_id: UUID, device_id: UUID | None = None, word_by_word: bool = False,
+                     compact: bool = False) -> GetTypingTestRequest:
+    return GetTypingTestRequest(test_id=test_id, device_id=device_id, word_by_word=word_by_word,
+                                compact=compact)

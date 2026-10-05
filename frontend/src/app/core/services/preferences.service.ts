@@ -41,6 +41,7 @@ export class PreferencesService {
     this.document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     this.document.documentElement.lang = this.language();
     const favicon = this.document.getElementById('app-favicon') as HTMLLinkElement | null;
-    if (favicon) favicon.href = dark ? 'typedash-logo-dark.svg' : 'typedash-logo.svg';
+    const faviconPath = dark ? '/typedash-logo-dark.svg' : '/typedash-logo.svg';
+    if (favicon && favicon.getAttribute('href') !== faviconPath) favicon.setAttribute('href', faviconPath);
   }
 }

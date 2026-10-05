@@ -1,5 +1,7 @@
 from datetime import timedelta
 from copy import deepcopy
+from threading import Lock
+from time import monotonic
 from uuid import uuid4
 
 from app.api.responses.api import ApiResponse
@@ -16,6 +18,7 @@ from app.repositories.memory_device_repository import MemoryDeviceRepository
 from app.repositories.memory_typing_test_repository import MemoryTypingTestRepository
 from app.repositories.typing_test_repository import PostgresTypingTestRepository
 from app.services.prompt_service import PromptService
+from app.services.prepared_test_cache import PreparedTestCache
 from app.services.typing_engine import elapsed, snapshot, update_test
 from app.services.typing_view import typing_view
 
@@ -34,6 +37,9 @@ class TypingService:
         self.device_repository = device_repository
         self.prompts = prompts
         self.live_tests: dict[str, TypingTest | None] = {}
+        self.prepared_tests = PreparedTestCache()
+        self._cleanup_lock = Lock()
+        self._next_cleanup = 0.0
 
     def prepare(self, request: CreateTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         now = utc_now()
@@ -47,11 +53,25 @@ class TypingService:
             ),
             created_at=now.isoformat(),
         )
-        with self.test_repository.transaction() as storage:
-            storage.delete_before((now - timedelta(days=1)).isoformat())
-            if isinstance(self.test_repository, MemoryTypingTestRepository) and storage.count() >= 2000:
-                raise TypingTestError("capacity_reached")
-            storage.save(test)
+        with self._cleanup_lock:
+            cleanup_due = monotonic() >= self._next_cleanup
+            if cleanup_due:
+                self._next_cleanup = monotonic() + 300
+        try:
+            with self.test_repository.transaction() as storage:
+                if cleanup_due:
+                    storage.delete_before((now - timedelta(days=1)).isoformat())
+                if isinstance(self.test_repository, MemoryTypingTestRepository) and storage.count() >= 2000:
+                    raise TypingTestError("capacity_reached")
+                storage.save(test)
+        except Exception:
+            if cleanup_due:
+                with self._cleanup_lock:
+                    self._next_cleanup = 0.0
+            raise
+        # Persistence remains mandatory before responding. The following
+        # WebSocket need not open another DB connection to read this same row.
+        self.prepared_tests.put(test)
         return self._response(test, now, request.word_by_word)
 
     def get(self, request: GetTypingTestRequest) -> ApiResponse[TypingTestResponse]:

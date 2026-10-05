@@ -20,6 +20,7 @@ class GetTypingTestRequest(BaseModel):
     test_id: UUID
     device_id: UUID | None = None
     word_by_word: bool = False
+    compact: bool = False
 
 
 class TypingKeyRequest(BaseModel):

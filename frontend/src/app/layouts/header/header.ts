@@ -28,9 +28,11 @@ export class Header {
   private readonly router = inject(Router);
 
   setLanguage(language: Language): void {
+    const destination = localizedPath(this.currentPage(), language);
+    if (this.preferences.language() === language && this.router.url === destination) return;
     this.preferences.setLanguage(language);
     this.closeMobileMenu();
-    void this.router.navigateByUrl(localizedPath(this.currentPage(), language));
+    void this.router.navigateByUrl(destination);
   }
 
   routeFor(page: LocalizedPageId): string {

@@ -14,18 +14,20 @@ export interface TypingConnection {
 @Injectable({ providedIn: 'root' })
 export class TypingStreamService {
   connect(id: string, deviceId: string, wordByWord: boolean,
-    receive: (test: TypingTest) => void, availability: (ready: boolean) => void): TypingConnection {
+    receive: (test: TypingTest) => void, availability: (ready: boolean) => void,
+    initial?: TypingTest): TypingConnection {
     const url = new URL(`/api/tests/${id}/stream`, environment.streamOrigin || location.origin);
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.searchParams.set('device_id', deviceId);
     url.searchParams.set('word_by_word', String(wordByWord));
+    if (initial) url.searchParams.set('compact', 'true');
     let socket: WebSocket;
     let closed = false;
     let ready = false;
     let attempts = 0;
     let reconnect: ReturnType<typeof setTimeout> | undefined;
     let watchdog: ReturnType<typeof setTimeout> | undefined;
-    let snapshot: TypingTest | undefined;
+    let snapshot: TypingTest | undefined = initial;
     // Retain acknowledged keys too, until this connection ends: a server restart
     // can recover from the last database checkpoint without losing recent input.
     const history = new Map<number, TypingInput>();

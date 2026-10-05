@@ -27,11 +27,11 @@
 <section class="practice-card" [attr.aria-label]="t('practice')">
   <div class="test-toolbar">
     <div class="text-options" role="group" [attr.aria-label]="t('textOptions')">
-      <button [class.selected]="options()?.punctuation" [attr.aria-pressed]="options()?.punctuation"
+      <button [class.selected]="options().punctuation" [attr.aria-pressed]="options().punctuation"
         [disabled]="locked()" (click)="toggleOption('punctuation')">
         <span aria-hidden="true">@</span>{{ t('punctuation') }}
       </button>
-      <button [class.selected]="options()?.numbers" [attr.aria-pressed]="options()?.numbers"
+      <button [class.selected]="options().numbers" [attr.aria-pressed]="options().numbers"
         [disabled]="locked()" (click)="toggleOption('numbers')">
         <span aria-hidden="true">#</span>{{ t('numbers') }}
       </button>
@@ -41,8 +41,8 @@
       <div class="duration-tabs" [attr.aria-label]="t('duration')">
         <td-icon name="clock" />
         @for (duration of durations(); track duration) {
-          <button [class.selected]="!customSelected() && options()?.duration === duration"
-            [disabled]="locked()" [attr.aria-pressed]="!customSelected() && options()?.duration === duration"
+          <button [class.selected]="!customSelected() && options().duration === duration"
+            [disabled]="locked()" [attr.aria-pressed]="!customSelected() && options().duration === duration"
             (click)="setDuration(duration)">{{ duration }}<span>s</span></button>
         }
         <div class="custom-control">
@@ -65,7 +65,7 @@
         </div>
       </div>
       <div class="difficulty-select">
-        <select [value]="options()?.difficulty" [attr.aria-label]="t('difficulty')" [disabled]="locked()"
+        <select [value]="options().difficulty" [attr.aria-label]="t('difficulty')" [disabled]="locked()"
           (change)="setDifficulty($event)">
           <option value="easy">{{ t('easy') }}</option>
           <option value="medium">{{ t('medium') }}</option>
@@ -99,7 +99,7 @@
           <button class="secondary-button" (click)="prepare()">{{ t('retry') }} <td-icon name="reset" /></button>
         </div>
       } @else {
-        <td-typing-input [enabled]="canType()" [label]="t('inputLabel')" [language]="options()?.language ?? 'en'"
+        <td-typing-input [enabled]="canType()" [label]="t('inputLabel')" [language]="options().language ?? 'en'"
           (keys)="queueKeys($event)" (pasteBlocked)="showPasteHint()">
         <div #passage class="passage" [class.word-by-word]="singleLineMode()"
           aria-hidden="true" dir="ltr">
