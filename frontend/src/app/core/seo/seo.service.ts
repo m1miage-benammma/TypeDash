@@ -34,9 +34,13 @@ export class SeoService {
     this.meta.updateTag({ name: 'twitter:image', content: SITE_ORIGIN + SOCIAL_IMAGE_PATH });
 
     this.setLink('canonical', canonicalUrl);
-    this.setAlternate('en', SITE_ORIGIN + (page.language === 'en' ? page.path : alternatePage));
-    this.setAlternate('fr', SITE_ORIGIN + (page.language === 'fr' ? page.path : alternatePage));
-    this.setAlternate('x-default', SITE_ORIGIN + englishPath);
+    if (page.pageType === 'home') {
+      this.document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach(link => link.remove());
+    } else {
+      this.setAlternate('en', SITE_ORIGIN + (page.language === 'en' ? page.path : alternatePage));
+      this.setAlternate('fr', SITE_ORIGIN + (page.language === 'fr' ? page.path : alternatePage));
+      this.setAlternate('x-default', SITE_ORIGIN + englishPath);
+    }
     this.setStructuredData(page, canonicalUrl);
   }
 

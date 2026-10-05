@@ -29,15 +29,29 @@ const result = spawnSync(process.execPath, [
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
+const legacyPaths = {
+  '/typing-test': '/en/typing-test',
+  '/typing-speed-guide': '/en/typing-speed-guide',
+  '/improve-typing-accuracy': '/en/improve-typing-accuracy',
+  '/wpm-calculator': '/en/wpm-calculator',
+  '/typing-test-for-programmers': '/en/typing-test-for-programmers',
+  '/progress': '/en/progress',
+};
+const siteHost = new URL(siteOrigin).hostname;
+// Combine host, scheme and legacy-path normalization in the same redirect.
+// Keep preview domains independent; normalize only production aliases.
+const aliases = [
+  `http://${siteHost}`, `http://www.${siteHost}`, `https://www.${siteHost}`,
+  'http://typedasha.netlify.app', 'https://typedasha.netlify.app',
+].filter(origin => origin !== siteOrigin);
 writeFileSync(resolve(publish, '_redirects'),
   [
+    ...aliases.flatMap(origin => [
+      ...Object.entries(legacyPaths).map(([from, to]) => `${origin}${from} ${siteOrigin}${to} 301!`),
+      `${origin}/* ${siteOrigin}/:splat 301!`,
+    ]),
     `/api/* ${apiOrigin}/api/:splat 200!`,
-    '/typing-test /en/typing-test 301',
-    '/typing-speed-guide /en/typing-speed-guide 301',
-    '/improve-typing-accuracy /en/improve-typing-accuracy 301',
-    '/wpm-calculator /en/wpm-calculator 301',
-    '/typing-test-for-programmers /en/typing-test-for-programmers 301',
-    '/progress /en/progress 301',
+    ...Object.entries(legacyPaths).map(([from, to]) => `${from} ${siteOrigin}${to} 301!`),
     '/* /index.csr.html 200',
     '',
   ].join('\n'), 'utf8');

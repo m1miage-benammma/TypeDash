@@ -23,7 +23,9 @@ export class TypingApiService {
   }
 
   private unwrap(response: Observable<ApiResponse<TypingTest>>): Observable<TypingTest> {
-    return response.pipe(timeout(10000), map(value => value.data));
+    // Allow the hosted backend to wake up without turning a slow first load
+    // into a failed session. Do not retry POST automatically (duplicate tests).
+    return response.pipe(timeout(60000), map(value => value.data));
   }
 
 }

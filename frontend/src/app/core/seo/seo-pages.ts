@@ -15,11 +15,17 @@ export interface SeoPage {
   path: string;
   title: string;
   description: string;
-  pageType: 'application' | 'article' | 'private';
+  pageType: 'application' | 'article' | 'private' | 'home';
   robots?: 'index,follow' | 'noindex,follow';
 }
 
 type PublicSeoCopy = Record<PublicPageId, Pick<SeoPage, 'title' | 'description' | 'pageType'>>;
+
+export const homeSeo: SeoPage = {
+  pageId: 'typingTest', language: 'en', path: '/', pageType: 'home',
+  title: 'TypeDash — Free English and French Typing Tests',
+  description: 'Practise typing in English or French with TypeDash. Measure speed and accuracy, review completed sessions, and learn techniques for confident typing.',
+};
 
 const copy: Record<Language, PublicSeoCopy> = {
   en: {

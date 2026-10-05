@@ -2,7 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, ElementRef, inject, signal, untracked, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { EMPTY, Subject, catchError, finalize, interval, switchMap, tap } from 'rxjs';
+import { EMPTY, Subject, Subscription, catchError, finalize, interval, switchMap, tap } from 'rxjs';
 
 import { I18nService } from '../../../../core/services/i18n.service';
 import { DeviceIdentityService } from '../../../../core/services/device-identity.service';
@@ -61,6 +61,7 @@ export class TypingGame {
   readonly locked = computed(() => this.loading() || this.pendingInputs().length > 0 || this.test()?.view.can_configure === false);
   readonly result = computed(() => this.test()?.result ?? null);
   readonly canType = computed(() => this.test()?.view.can_type === true
+    && this.test()?.language === this.preferences.language()
     && !this.loading() && !this.loadError()
     && !this.restartModal() && !this.registrationModal());
   readonly customSelected = computed(() => this.test()?.view.custom_duration ?? false);
@@ -100,12 +101,16 @@ export class TypingGame {
   private connection: TypingConnection | null = null;
   private sentSequence = -1;
   private sequence = -1;
+  private requestedLanguage = this.preferences.language();
+  private restoreSubscription?: Subscription;
 
   constructor() {
     this.prepareRequests.pipe(
       switchMap(options => {
+        this.restoreSubscription?.unsubscribe();
         this.loading.set(true);
         this.loadError.set(false);
+        this.offline.set(false);
         this.durationError.set(null);
         this.connection?.close();
         this.connection = null;
@@ -156,7 +161,9 @@ export class TypingGame {
     effect(() => {
       const language = this.preferences.language();
       untracked(() => {
-        if (this.test() && this.test()?.language !== language && !this.locked()) {
+        // Language changes supersede even an in-flight load or an active test.
+        // switchMap cancels the old request; its words must never win this race.
+        if (this.requestedLanguage !== language) {
           this.prepare({ language });
         }
       });
@@ -179,6 +186,8 @@ export class TypingGame {
   }
 
   prepare(changes: PrepareTestRequest = {}): void {
+    this.requestedLanguage = this.preferences.language();
+    this.clearActive();
     this.prepareRequests.next({
       ...this.requestOptions(), language: this.preferences.language(),
       ...changes, word_by_word: this.singleLineMode(),
@@ -263,7 +272,7 @@ export class TypingGame {
       this.analytics.sessionEvent('typing_session_complete', test);
       this.clearActive();
       this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        error: () => this.offline.set(true),
+        error: () => undefined, // Profile availability is not stream availability.
       });
     }
   }
@@ -306,10 +315,14 @@ export class TypingGame {
       this.prepare();
       return;
     }
-    this.api.get(active.id, this.identity.deviceId(), this.singleLineMode()).pipe(
+    this.restoreSubscription = this.api.get(active.id, this.identity.deviceId(), this.singleLineMode()).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: test => {
+        if (test.language !== this.preferences.language()) {
+          this.prepare();
+          return;
+        }
         this.sequence = test.revision;
         this.test.set(test);
         this.receivedAt.set(performance.now());
@@ -318,7 +331,7 @@ export class TypingGame {
         if (test.result) {
           this.clearActive();
           this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            error: () => this.offline.set(true),
+            error: () => undefined,
           });
         }
         if (!this.isMobile()) setTimeout(() => this.focusInput());

@@ -34,21 +34,26 @@ export class TypingStreamService {
         key: input.key, sequence: input.sequence, word_by_word: input.wordByWord,
       })),
     } satisfies TypingBatchRequest));
-    const armWatchdog = () => {
+    const armWatchdog = (current: WebSocket, timeout = 10000) => {
       clearTimeout(watchdog);
-      watchdog = setTimeout(() => socket.close(), 10000);
+      watchdog = setTimeout(() => {
+        if (!closed && socket === current) current.close();
+      }, timeout);
     };
     const open = () => {
       if (closed) return;
       ready = false;
-      availability(false);
       socket = new WebSocket(url);
-      armWatchdog();
-      socket.onmessage = event => {
+      const current = socket;
+      // A first handshake/database load can take longer than a heartbeat.
+      // Connecting is not an interruption: report failure only on a real close.
+      armWatchdog(current, 60000);
+      current.onmessage = event => {
+        if (closed || socket !== current) return;
         try {
           const response = JSON.parse(event.data) as ApiResponse<TypingTest>;
           if (!response.data || response.data.id !== id) { socket.close(); return; }
-          armWatchdog();
+          armWatchdog(current);
           if (!ready) {
             const replay = [...history.values()].filter(input => input.sequence > response.data.revision);
             for (let offset = 0; offset < replay.length; offset += 256) sendFrame(replay.slice(offset, offset + 256));
@@ -64,11 +69,11 @@ export class TypingStreamService {
           if (response.data.result) close();
         } catch { socket.close(); }
       };
-      socket.onerror = () => socket.close();
-      socket.onclose = () => {
+      current.onerror = () => current.close();
+      current.onclose = () => {
+        if (closed || socket !== current) return;
         clearTimeout(watchdog);
         ready = false;
-        if (closed) return;
         availability(false);
         reconnect = setTimeout(open, Math.min(500 * 2 ** attempts++, 5000));
       };

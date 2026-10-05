@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { languageRedirectGuard } from './core/seo/language-redirect.guard';
-import { privateSeo, publicSeo } from './core/seo/seo-pages';
+import { homeSeo, privateSeo, publicSeo } from './core/seo/seo-pages';
 
 const typingTestPage = () => import('./features/typing-game/pages/typing-test-page').then(module => module.TypingTestPage);
 const progressPage = () => import('./features/progress/pages/progress-page').then(module => module.ProgressPage);
@@ -15,7 +14,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./layouts/app-shell/app-shell').then(module => module.AppShell),
     children: [
-      { path: '', pathMatch: 'full', canActivate: [languageRedirectGuard], loadComponent: typingTestPage },
+      { path: '', pathMatch: 'full', loadComponent: () => import('./features/content/pages/home-page').then(module => module.HomePage), data: { pageId: 'typingTest', seo: homeSeo } },
 
       { path: 'en/typing-test', loadComponent: typingTestPage, data: { pageId: 'typingTest', language: 'en', seo: publicSeo('typingTest', 'en') } },
       { path: 'fr/test-de-frappe', loadComponent: typingTestPage, data: { pageId: 'typingTest', language: 'fr', seo: publicSeo('typingTest', 'fr') } },
