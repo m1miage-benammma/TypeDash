@@ -10,6 +10,7 @@ from app.api.routers.devices import create_router as create_devices_router
 from app.api.routers.health import router as health_router
 from app.api.routers.typing import create_router as create_typing_router
 from app.core.config import settings
+from app.core.postgres import PostgresDatabase
 from app.repositories.device_repository import PostgresDeviceRepository
 from app.repositories.memory_device_repository import MemoryDeviceRepository
 from app.repositories.memory_typing_test_repository import MemoryTypingTestRepository
@@ -19,12 +20,14 @@ from app.services.prompt_service import PromptService
 from app.services.typing_service import TypingService
 
 
+database = None
 if settings.storage == "memory":
     test_repository = MemoryTypingTestRepository()
     device_repository = MemoryDeviceRepository()
 else:
-    test_repository = PostgresTypingTestRepository(settings)
-    device_repository = PostgresDeviceRepository(settings)
+    database = PostgresDatabase(settings)
+    test_repository = PostgresTypingTestRepository(database)
+    device_repository = PostgresDeviceRepository(database)
 
 device_service = DeviceService(device_repository)
 typing_service = TypingService(test_repository, device_repository, PromptService())
@@ -38,8 +41,14 @@ async def lifespan(_app: FastAPI):
             "(explicit local development mode)."
         )
     else:
-        test_repository.initialize()
-        device_repository.initialize()
+        try:
+            database.open()
+            test_repository.initialize()
+            device_repository.initialize()
+            yield
+        finally:
+            database.close()
+        return
     yield
 
 

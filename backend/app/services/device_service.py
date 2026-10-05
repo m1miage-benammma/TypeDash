@@ -103,15 +103,12 @@ class DeviceService:
 
     def _response(self, storage, device: Device) -> ApiResponse[DeviceProfileResponse]:
         user = storage.find_user(device.user_id) if device.user_id else None
-        stats = sorted(storage.list_stats(device.id),
-                       key=lambda stat: stat.finished_at, reverse=True)
-        speeds = [stat.wpm for stat in stats]
-        accuracies = [stat.accuracy for stat in stats]
+        stats = storage.list_stats(device.id, limit=30, offset=0)
+        summary = storage.stats_summary(device.id)
         profile = DeviceProfile(
-            device=device, user=user, stats=stats[:30], total_sessions=len(stats),
-            best_wpm=max(speeds, default=0),
-            average_wpm=sum(speeds) / len(speeds) if speeds else 0,
-            average_accuracy=sum(accuracies) / len(accuracies) if accuracies else 0,
+            device=device, user=user, stats=stats, total_sessions=summary.sessions,
+            best_wpm=summary.best_wpm, average_wpm=summary.average_wpm,
+            average_accuracy=summary.average_accuracy,
         )
         return ApiResponse[DeviceProfileResponse](
             data=DeviceProfileResponse.model_validate(self._profile_view(profile)),

@@ -13,11 +13,11 @@ export class TypingApiService {
   private readonly url = environment.apiUrl + '/tests';
 
   prepare(options: PrepareTestRequest): Observable<TypingTest> {
-    return this.unwrap(this.http.post<ApiResponse<TypingTest>>(this.url, options));
+    return this.unwrap(this.http.post<ApiResponse<TypingTest>>(this.url, { ...options, compact: true }));
   }
 
   get(id: string, deviceId: string | null, wordByWord: boolean): Observable<TypingTest> {
-    const params: Record<string, string> = { word_by_word: String(wordByWord) };
+    const params: Record<string, string> = { word_by_word: String(wordByWord), compact: 'true' };
     if (deviceId) params['device_id'] = deviceId;
     return this.unwrap(this.http.get<ApiResponse<TypingTest>>(this.url + '/' + id, { params }));
   }

@@ -5,6 +5,7 @@ from threading import RLock
 from app.models.device import Device
 from app.models.typing_stat import TypingStat
 from app.models.user import User
+from app.models.stats_summary import StatsSummary
 
 
 class MemoryDeviceRepository:
@@ -42,8 +43,19 @@ class MemoryDeviceRepository:
     def save_user(self, user: User) -> None:
         self.users[user.id] = user
 
-    def list_stats(self, device_id: str) -> list[TypingStat]:
-        return [stat for stat in self.stats.values() if stat.device_id == device_id]
+    def list_stats(self, device_id: str, limit: int = 30, offset: int = 0) -> list[TypingStat]:
+        rows = sorted((stat for stat in self.stats.values() if stat.device_id == device_id),
+                      key=lambda stat: (stat.finished_at, stat.id), reverse=True)
+        return rows[offset:offset + limit]
+
+    def stats_summary(self, device_id: str) -> StatsSummary:
+        rows = [stat for stat in self.stats.values() if stat.device_id == device_id]
+        count = len(rows)
+        return StatsSummary(
+            sessions=count, best_wpm=max((stat.wpm for stat in rows), default=0),
+            average_wpm=sum(stat.wpm for stat in rows) / count if count else 0,
+            average_accuracy=sum(stat.accuracy for stat in rows) / count if count else 0,
+        )
 
     def has_stat(self, test_id: str) -> bool:
         return test_id in self.stats

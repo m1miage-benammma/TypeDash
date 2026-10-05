@@ -5,6 +5,7 @@ RUN pip install --no-cache-dir --prefix=/install \
     "uvicorn[standard]>=0.30,<1.0" \
     "pydantic-settings>=2.0,<3.0" \
     "psycopg[binary]>=3.2,<4.0" \
+    "psycopg_pool==3.3.3" \
     "regex>=2024.11.6"
 
 FROM python:3.12-slim AS runtime

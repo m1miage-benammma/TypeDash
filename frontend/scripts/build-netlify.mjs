@@ -30,12 +30,18 @@ if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
 const legacyPaths = {
-  '/typing-test': '/en/typing-test',
-  '/typing-speed-guide': '/en/typing-speed-guide',
-  '/improve-typing-accuracy': '/en/improve-typing-accuracy',
-  '/wpm-calculator': '/en/wpm-calculator',
-  '/typing-test-for-programmers': '/en/typing-test-for-programmers',
-  '/progress': '/en/progress',
+  "/en/typing-test": "/typing-test",
+  "/fr/test-de-frappe": "/typing-test",
+  "/en/typing-speed-guide": "/typing-speed-guide",
+  "/fr/guide-vitesse-frappe": "/typing-speed-guide",
+  "/en/improve-typing-accuracy": "/improve-typing-accuracy",
+  "/fr/ameliorer-precision-frappe": "/improve-typing-accuracy",
+  "/en/wpm-calculator": "/wpm-calculator",
+  "/fr/calculateur-mpm": "/wpm-calculator",
+  "/en/typing-test-for-programmers": "/typing-test-for-programmers",
+  "/fr/test-frappe-programmeurs": "/typing-test-for-programmers",
+  "/en/progress": "/progress",
+  "/fr/progres": "/progress"
 };
 const siteHost = new URL(siteOrigin).hostname;
 // Combine host, scheme and legacy-path normalization in the same redirect.
@@ -62,9 +68,7 @@ writeFileSync(resolve(publish, '_headers'), [
   '/*',
   '  X-Content-Type-Options: nosniff',
   '  Referrer-Policy: strict-origin-when-cross-origin',
-  '/en/progress',
-  '  X-Robots-Tag: noindex, follow',
-  '/fr/progres',
+  '/progress',
   '  X-Robots-Tag: noindex, follow',
   '',
 ].join('\n'), 'utf8');

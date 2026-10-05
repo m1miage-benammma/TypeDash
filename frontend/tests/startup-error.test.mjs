@@ -11,7 +11,7 @@ function page(pathname, withHost = true) {
     replaceChildren(...children) { this.children = children; },
   };
   return {
-    location: { pathname }, host,
+    location: { pathname }, documentElement: { lang: pathname === 'fr' ? 'fr' : 'en' }, host,
     querySelector: () => withHost ? host : null,
     createElement: tag => ({
       tag, attributes: {}, listeners: {},
@@ -22,7 +22,7 @@ function page(pathname, withHost = true) {
 }
 
 test('bootstrap failure displays an accessible message and a working reload action', () => {
-  const document = page('/en/typing-test');
+  const document = page('/typing-test');
   let reloads = 0;
   showStartupError(document, () => reloads++);
   const [message, retry] = document.host.children;
@@ -34,13 +34,13 @@ test('bootstrap failure displays an accessible message and a working reload acti
   assert.equal(reloads, 1);
 });
 
-test('the startup message follows the French route without exposing internal errors', () => {
-  const document = page('/fr/test-de-frappe');
+test('the startup message follows the selected language without exposing internal errors', () => {
+  const document = page('fr');
   showStartupError(document, () => {});
   assert.match(document.host.children[0].textContent, /n’a pas pu démarrer/);
   assert.equal(document.host.children[1].textContent, 'Recharger la page');
 });
 
 test('a missing app host does not cause another startup exception', () => {
-  assert.doesNotThrow(() => showStartupError(page('/en/typing-test', false), () => {}));
+  assert.doesNotThrow(() => showStartupError(page('/typing-test', false), () => {}));
 });

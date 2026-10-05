@@ -1,65 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://typedash.online/</loc></url>
-  <url>
-    <loc>https://typedash.online/en/typing-test</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/typing-test" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/test-de-frappe" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/typing-test" />
-  </url>
-  <url>
-    <loc>https://typedash.online/fr/test-de-frappe</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/typing-test" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/test-de-frappe" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/typing-test" />
-  </url>
-  <url>
-    <loc>https://typedash.online/en/typing-speed-guide</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/typing-speed-guide" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/guide-vitesse-frappe" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/typing-speed-guide" />
-  </url>
-  <url>
-    <loc>https://typedash.online/fr/guide-vitesse-frappe</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/typing-speed-guide" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/guide-vitesse-frappe" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/typing-speed-guide" />
-  </url>
-  <url>
-    <loc>https://typedash.online/en/improve-typing-accuracy</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/improve-typing-accuracy" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/ameliorer-precision-frappe" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/improve-typing-accuracy" />
-  </url>
-  <url>
-    <loc>https://typedash.online/fr/ameliorer-precision-frappe</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/improve-typing-accuracy" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/ameliorer-precision-frappe" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/improve-typing-accuracy" />
-  </url>
-  <url>
-    <loc>https://typedash.online/en/wpm-calculator</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/wpm-calculator" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/calculateur-mpm" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/wpm-calculator" />
-  </url>
-  <url>
-    <loc>https://typedash.online/fr/calculateur-mpm</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/wpm-calculator" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/calculateur-mpm" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/wpm-calculator" />
-  </url>
-  <url>
-    <loc>https://typedash.online/en/typing-test-for-programmers</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/typing-test-for-programmers" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/test-frappe-programmeurs" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/typing-test-for-programmers" />
-  </url>
-  <url>
-    <loc>https://typedash.online/fr/test-frappe-programmeurs</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://typedash.online/en/typing-test-for-programmers" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://typedash.online/fr/test-frappe-programmeurs" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://typedash.online/en/typing-test-for-programmers" />
-  </url>
+  <url><loc>https://typedash.online/typing-test</loc></url>
+  <url><loc>https://typedash.online/typing-speed-guide</loc></url>
+  <url><loc>https://typedash.online/improve-typing-accuracy</loc></url>
+  <url><loc>https://typedash.online/wpm-calculator</loc></url>
+  <url><loc>https://typedash.online/typing-test-for-programmers</loc></url>
 </urlset>

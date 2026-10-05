@@ -1,5 +1,5 @@
 import { Language } from '../models/language';
-import { LOCALIZED_PATHS, LocalizedPageId } from './localized-routes';
+import { PAGE_PATHS, PageId } from './page-routes';
 
 // Replaced by Angular's build-time define; public configuration, never a secret.
 declare const TYPEDASH_SITE_ORIGIN: string;
@@ -7,10 +7,10 @@ export const SITE_ORIGIN = typeof TYPEDASH_SITE_ORIGIN === 'undefined'
   ? 'https://typedash.online' : TYPEDASH_SITE_ORIGIN;
 export const SOCIAL_IMAGE_PATH = '/typedash-social-card.svg';
 
-export type PublicPageId = Exclude<LocalizedPageId, 'progress'>;
+export type PublicPageId = Exclude<PageId, 'progress'>;
 
 export interface SeoPage {
-  pageId: LocalizedPageId;
+  pageId: PageId;
   language: Language;
   path: string;
   title: string;
@@ -88,7 +88,7 @@ export function publicSeo(pageId: PublicPageId, language: Language): SeoPage {
   return {
     pageId,
     language,
-    path: LOCALIZED_PATHS[language][pageId],
+    path: PAGE_PATHS[pageId],
     ...copy[language][pageId],
   };
 }
@@ -97,7 +97,7 @@ export function privateSeo(language: Language): SeoPage {
   return {
     pageId: 'progress',
     language,
-    path: LOCALIZED_PATHS[language].progress,
+    path: PAGE_PATHS.progress,
     title: language === 'fr' ? 'Mes progrès de frappe | TypeDash' : 'My Typing Progress | TypeDash',
     description: language === 'fr'
       ? 'Consultez les statistiques de frappe enregistrées pour cet appareil.'

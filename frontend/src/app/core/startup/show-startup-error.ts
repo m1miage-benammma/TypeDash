@@ -5,7 +5,7 @@ export function showStartupError(
 ): void {
   const host = page.querySelector('app-root');
   if (!host) return;
-  const french = page.location.pathname.startsWith('/fr/');
+  const french = page.documentElement.lang === 'fr';
   const message = page.createElement('p');
   message.textContent = french
     ? 'TypeDash n’a pas pu démarrer. Rechargez la page pour réessayer.'

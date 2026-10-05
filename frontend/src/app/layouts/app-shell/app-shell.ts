@@ -1,14 +1,12 @@
-import { afterNextRender, Component, inject, signal } from '@angular/core';
+import { afterNextRender, Component, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
-import { LocalizedPageId } from '../../core/seo/localized-routes';
-import { SeoPage } from '../../core/seo/seo-pages';
+import { privateSeo, publicSeo, SeoPage } from '../../core/seo/seo-pages';
 import { SeoService } from '../../core/seo/seo.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { ChangeUsernameModal } from '../../features/identity/components/change-username-modal/change-username-modal';
-import { Language } from '../../core/models/language';
 import { Header } from '../header/header';
 import { Footer } from '../footer/footer';
 import { AnalyticsService } from '../../core/analytics/analytics.service';
@@ -22,14 +20,21 @@ import { AnalyticsConsent } from '../../shared/components/analytics-consent/anal
 })
 export class AppShell {
   readonly usernameModalOpen = signal(false);
-  readonly currentPage = signal<LocalizedPageId>('typingTest');
   private readonly preferences = inject(PreferencesService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly seo = inject(SeoService);
   private readonly analytics = inject(AnalyticsService);
 
+  private readonly routeSeo = signal<SeoPage | null>(null);
+
   constructor() {
+    effect(() => {
+      const page = this.routeSeo();
+      const language = this.preferences.language();
+      if (page) this.seo.apply(page.pageType === 'home' ? { ...page, language }
+        : page.pageId === 'progress' ? privateSeo(language) : publicSeo(page.pageId, language));
+    });
     afterNextRender(() => this.analytics.initialize());
     this.applyRouteContext();
     this.router.events.pipe(
@@ -42,14 +47,13 @@ export class AppShell {
     let activeRoute = this.route.snapshot;
     while (activeRoute.firstChild) activeRoute = activeRoute.firstChild;
 
-    const pageId = activeRoute.data['pageId'] as LocalizedPageId | undefined;
-    const language = activeRoute.data['language'] as Language | undefined;
     const seoPage = activeRoute.data['seo'] as SeoPage | undefined;
 
-    if (pageId) this.currentPage.set(pageId);
-    if (language && this.preferences.language() !== language) this.preferences.setLanguage(language);
     if (seoPage) {
-      this.seo.apply(seoPage);
+      this.routeSeo.set(seoPage);
+      this.seo.apply(seoPage.pageType === 'home' ? { ...seoPage, language: this.preferences.language() }
+        : seoPage.pageId === 'progress' ? privateSeo(this.preferences.language())
+        : publicSeo(seoPage.pageId, this.preferences.language()));
       this.analytics.viewPage(seoPage.path, seoPage.title);
     }
   }

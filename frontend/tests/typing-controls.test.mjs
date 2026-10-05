@@ -63,19 +63,3 @@ test('language selection keeps pending timer and difficulty settings', () => {
   assert.equal(game.options().duration, 30);
   assert.equal(game.options().difficulty, 'hard');
 });
-
-const { TypingRouteReuseStrategy } = await compile('../src/app/core/seo/typing-route-reuse.strategy.ts', `
-const Injectable = () => target => target;
-class BaseRouteReuseStrategy {
-  shouldReuseRoute(future, current) { return future.routeConfig === current.routeConfig; }
-}
-`);
-
-test('localized typing routes reuse the same component without another restoration request', () => {
-  const strategy = new TypingRouteReuseStrategy();
-  const route = (pageId, language) => ({ routeConfig: {}, data: { pageId, language } });
-  assert.equal(strategy.shouldReuseRoute(route('typingTest', 'en'), route('typingTest', 'fr')), true);
-  assert.equal(strategy.shouldReuseRoute(route('typingTest', 'en'), route('typingTest', undefined)), false);
-  assert.equal(strategy.shouldReuseRoute(route('progress', 'en'), route('typingTest', 'en')), false);
-  assert.equal(strategy.shouldReuseRoute(route('progress', 'en'), route('progress', 'fr')), false);
-});

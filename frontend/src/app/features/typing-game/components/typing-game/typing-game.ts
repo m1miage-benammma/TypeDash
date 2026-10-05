@@ -113,6 +113,7 @@ export class TypingGame {
   private sentSequence = -1;
   private sequence = -1;
   private requestedLanguage = this.preferences.language();
+  private preparationStarted = false;
   private restoreSubscription?: Subscription;
 
   constructor() {
@@ -128,7 +129,9 @@ export class TypingGame {
         this.pendingInputs.set([]);
         // Cancel immediately on the next selection, including during this
         // short coalescing window. Only the latest settings reach the server.
-        return timer(50).pipe(switchMap(() => this.api.prepare(options)),
+        const delay = this.preparationStarted ? 50 : 0;
+        this.preparationStarted = true;
+        return timer(delay).pipe(switchMap(() => this.api.prepare(options)),
           tap(test => {
             this.sequence = test.revision;
             this.offline.set(false);

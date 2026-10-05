@@ -22,11 +22,6 @@
 
 # Allow crawling so search engines can read noindex on personal-history pages.
 [[headers]]
-  for = "/en/progress"
-  [headers.values]
-    X-Robots-Tag = "noindex, follow"
-
-[[headers]]
-  for = "/fr/progres"
+  for = "/progress"
   [headers.values]
     X-Robots-Tag = "noindex, follow"

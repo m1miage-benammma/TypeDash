@@ -2,7 +2,6 @@ import { DOCUMENT } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 
-import { LOCALIZED_PATHS } from './localized-routes';
 import { SeoPage, SITE_ORIGIN, SOCIAL_IMAGE_PATH } from './seo-pages';
 
 @Injectable({ providedIn: 'root' })
@@ -13,8 +12,6 @@ export class SeoService {
 
   apply(page: SeoPage): void {
     const canonicalUrl = SITE_ORIGIN + page.path;
-    const alternatePage = LOCALIZED_PATHS[page.language === 'en' ? 'fr' : 'en'][page.pageId];
-    const englishPath = LOCALIZED_PATHS.en[page.pageId];
 
     this.document.documentElement.lang = page.language;
     this.title.setTitle(page.title);
@@ -27,20 +24,13 @@ export class SeoService {
     this.meta.updateTag({ property: 'og:url', content: canonicalUrl });
     this.meta.updateTag({ property: 'og:image', content: SITE_ORIGIN + SOCIAL_IMAGE_PATH });
     this.meta.updateTag({ property: 'og:locale', content: page.language === 'fr' ? 'fr_FR' : 'en_US' });
-    this.meta.updateTag({ property: 'og:locale:alternate', content: page.language === 'fr' ? 'en_US' : 'fr_FR' });
     this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
     this.meta.updateTag({ name: 'twitter:title', content: page.title });
     this.meta.updateTag({ name: 'twitter:description', content: page.description });
     this.meta.updateTag({ name: 'twitter:image', content: SITE_ORIGIN + SOCIAL_IMAGE_PATH });
 
     this.setLink('canonical', canonicalUrl);
-    if (page.pageType === 'home') {
-      this.document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach(link => link.remove());
-    } else {
-      this.setAlternate('en', SITE_ORIGIN + (page.language === 'en' ? page.path : alternatePage));
-      this.setAlternate('fr', SITE_ORIGIN + (page.language === 'fr' ? page.path : alternatePage));
-      this.setAlternate('x-default', SITE_ORIGIN + englishPath);
-    }
+    this.document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach(link => link.remove());
     this.setStructuredData(page, canonicalUrl);
   }
 
@@ -49,17 +39,6 @@ export class SeoService {
     if (!link) {
       link = this.document.createElement('link');
       link.rel = rel;
-      this.document.head.appendChild(link);
-    }
-    link.href = href;
-  }
-
-  private setAlternate(language: string, href: string): void {
-    let link = this.document.head.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${language}"]`);
-    if (!link) {
-      link = this.document.createElement('link');
-      link.rel = 'alternate';
-      link.hreflang = language;
       this.document.head.appendChild(link);
     }
     link.href = href;

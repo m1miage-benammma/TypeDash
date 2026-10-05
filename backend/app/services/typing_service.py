@@ -72,13 +72,13 @@ class TypingService:
         # Persistence remains mandatory before responding. The following
         # WebSocket need not open another DB connection to read this same row.
         self.prepared_tests.put(test)
-        return self._response(test, now, request.word_by_word)
+        return self._response(test, now, request.word_by_word, include_words=not request.compact)
 
     def get(self, request: GetTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         now = utc_now()
         live = self.live_tests.get(str(request.test_id))
         if live is not None:
-            return self._response(live, now, request.word_by_word)
+            return self._response(live, now, request.word_by_word, include_words=not request.compact)
         with self.test_repository.transaction() as storage:
             test = self._require_test(storage, str(request.test_id))
             update_test(test, test.typed, test.revision, elapsed(test, now) >= test.duration, now)

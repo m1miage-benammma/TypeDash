@@ -14,6 +14,7 @@ class CreateTypingTestRequest(BaseModel):
     language: Language = Language.EN
     duration: StrictInt | str = 30
     word_by_word: bool = False
+    compact: bool = False
 
 
 class GetTypingTestRequest(BaseModel):

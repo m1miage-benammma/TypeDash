@@ -4,8 +4,8 @@
     <p>Find your typing flow with TypeDash: a focused space to practise, measure your progress, and build accuracy one session at a time.</p>
   </header>
   <nav class="my-8 flex flex-wrap gap-4" aria-label="Choose your typing test">
-    <a class="secondary-button" routerLink="/en/typing-test" lang="en">Start the English typing test</a>
-    <a class="secondary-button" routerLink="/fr/test-de-frappe" lang="fr">Commencer le test en français</a>
+    <a class="secondary-button" routerLink="/typing-test" (click)="preferences.setLanguage('en')" lang="en">Start the English typing test</a>
+    <a class="secondary-button" routerLink="/typing-test" (click)="preferences.setLanguage('fr')" lang="fr">Commencer le test en français</a>
   </nav>
   <div class="grid gap-10 md:grid-cols-2 text-[var(--muted)] leading-relaxed">
     <article lang="en">
@@ -13,14 +13,14 @@
       <p>Choose English or French words, select a difficulty, and set a short or custom duration. Add punctuation and numbers when you want a more varied challenge. Use the multiple-line view for a wider passage, or the word-by-word view to keep your attention on the next word. On your phone, tap the typing area to open your keyboard.</p>
       <p class="mt-4">The timer starts with your first character and pauses when you stop typing. At the end of each session, review your words per minute, accuracy, correct characters, mistakes, and speed chart. Completed results are saved for your device, so you can compare sessions and follow your personal best without watching distracting live score updates.</p>
       <h2 class="mt-6 mb-4 text-xl font-semibold text-[var(--ink)]">Build speed without sacrificing accuracy</h2>
-      <p>A comfortable rhythm is more useful than rushing through words. Keep your hands relaxed, aim for consistent accuracy, and use regular short sessions to practise difficult patterns. Read the <a class="underline" routerLink="/en/typing-speed-guide">typing speed guide</a>, try the <a class="underline" routerLink="/en/improve-typing-accuracy">accuracy exercises</a>, or explore the <a class="underline" routerLink="/en/wpm-calculator">WPM calculator</a> to understand your results.</p>
+      <p>A comfortable rhythm is more useful than rushing through words. Keep your hands relaxed, aim for consistent accuracy, and use regular short sessions to practise difficult patterns. Read the <a class="underline" routerLink="/typing-speed-guide" (click)="preferences.setLanguage('en')">typing speed guide</a>, try the <a class="underline" routerLink="/improve-typing-accuracy" (click)="preferences.setLanguage('en')">accuracy exercises</a>, or explore the <a class="underline" routerLink="/wpm-calculator" (click)="preferences.setLanguage('en')">WPM calculator</a> to understand your results.</p>
     </article>
     <article lang="fr">
       <h2 class="mb-4 text-xl font-semibold text-[var(--ink)]">Un entraînement adapté à votre rythme</h2>
       <p>Choisissez un test de frappe en français ou en anglais, ajustez sa durée et sa difficulté, puis commencez à saisir les mots affichés. La ponctuation et les nombres offrent des exercices supplémentaires. Les modes plusieurs lignes et mot par mot restent disponibles, ainsi que la saisie au clavier sur téléphone.</p>
-      <p class="mt-4">Le chronomètre démarre au premier caractère et se met en pause lorsque vous arrêtez de taper. Les statistiques apparaissent à la fin de la session : vitesse en mots par minute, précision, caractères corrects et erreurs. Retrouvez ensuite les résultats enregistrés pour votre appareil dans <a class="underline" routerLink="/fr/progres">Mes progrès</a> pour comparer vos séances et consulter votre record personnel.</p>
+      <p class="mt-4">Le chronomètre démarre au premier caractère et se met en pause lorsque vous arrêtez de taper. Les statistiques apparaissent à la fin de la session : vitesse en mots par minute, précision, caractères corrects et erreurs. Retrouvez ensuite les résultats enregistrés pour votre appareil dans <a class="underline" routerLink="/progress" (click)="preferences.setLanguage('fr')">Mes progrès</a> pour comparer vos séances et consulter votre record personnel.</p>
       <h2 class="mt-6 mb-4 text-xl font-semibold text-[var(--ink)]">Comprendre ses résultats pour progresser</h2>
-      <p>Privilégiez une frappe régulière et précise avant de chercher à accélérer. Des séances courtes et répétées permettent de travailler les mots difficiles sans perdre votre concentration. Consultez le <a class="underline" routerLink="/fr/guide-vitesse-frappe">guide de vitesse</a>, les <a class="underline" routerLink="/fr/ameliorer-precision-frappe">conseils de précision</a> et le <a class="underline" routerLink="/fr/calculateur-mpm">calculateur MPM</a>. Pour un entraînement plus technique, découvrez le <a class="underline" routerLink="/fr/test-frappe-programmeurs">test pour programmeurs</a>.</p>
+      <p>Privilégiez une frappe régulière et précise avant de chercher à accélérer. Des séances courtes et répétées permettent de travailler les mots difficiles sans perdre votre concentration. Consultez le <a class="underline" routerLink="/typing-speed-guide" (click)="preferences.setLanguage('fr')">guide de vitesse</a>, les <a class="underline" routerLink="/improve-typing-accuracy" (click)="preferences.setLanguage('fr')">conseils de précision</a> et le <a class="underline" routerLink="/wpm-calculator" (click)="preferences.setLanguage('fr')">calculateur MPM</a>. Pour un entraînement plus technique, découvrez le <a class="underline" routerLink="/typing-test-for-programmers" (click)="preferences.setLanguage('fr')">test pour programmeurs</a>.</p>
     </article>
   </div>
 </section>

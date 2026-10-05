@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { afterNextRender, Component, inject, signal } from '@angular/core';
 import { I18nService } from '../../../core/services/i18n.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 
@@ -8,9 +8,9 @@ import { TypingGame } from '../components/typing-game/typing-game';
   selector: 'td-typing-test-page',
   imports: [TypingGame],
   template: `
-    @defer (on immediate) {
+    @if (browser()) {
       <td-typing-game />
-    } @placeholder {
+    } @else {
       <section class="min-h-[640px]">
         <header class="page-heading">
           <h1>{{ i18n.t('headline') }} <em>{{ i18n.t('flow') }}</em></h1>
@@ -23,6 +23,11 @@ import { TypingGame } from '../components/typing-game/typing-game';
   `,
 })
 export class TypingTestPage {
+  readonly browser = signal(false);
   readonly i18n = inject(I18nService);
   readonly preferences = inject(PreferencesService);
+
+  constructor() {
+    afterNextRender(() => this.browser.set(true));
+  }
 }

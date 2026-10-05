@@ -1,7 +1,7 @@
-import { Component, ElementRef, HostListener, inject, input, output, signal, ViewChild } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, ElementRef, HostListener, inject, output, signal, ViewChild } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
-import { LocalizedPageId, localizedPath } from '../../core/seo/localized-routes';
+import { PageId, pagePath } from '../../core/seo/page-routes';
 import { I18nService } from '../../core/services/i18n.service';
 import { DeviceIdentityService } from '../../core/services/device-identity.service';
 import { PreferencesService } from '../../core/services/preferences.service';
@@ -18,25 +18,21 @@ import { Icon } from '../../shared/components/icon/icon';
 export class Header {
   @ViewChild('mobileMenuRoot') mobileMenuRoot?: ElementRef<HTMLElement>;
 
-  readonly currentPage = input.required<LocalizedPageId>();
   readonly usernameChangeRequested = output<void>();
   readonly preferences = inject(PreferencesService);
   readonly identity = inject(DeviceIdentityService);
   private readonly i18n = inject(I18nService);
   readonly t = this.i18n.t.bind(this.i18n);
   readonly mobileMenuOpen = signal(false);
-  private readonly router = inject(Router);
 
   setLanguage(language: Language): void {
-    const destination = localizedPath(this.currentPage(), language);
-    if (this.preferences.language() === language && this.router.url === destination) return;
+    if (this.preferences.language() === language) return;
     this.preferences.setLanguage(language);
     this.closeMobileMenu();
-    void this.router.navigateByUrl(destination);
   }
 
-  routeFor(page: LocalizedPageId): string {
-    return localizedPath(page, this.preferences.language());
+  routeFor(page: PageId): string {
+    return pagePath(page);
   }
 
   toggleMobileMenu(): void {

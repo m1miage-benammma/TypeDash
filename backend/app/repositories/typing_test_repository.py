@@ -1,36 +1,23 @@
 from contextlib import contextmanager
 from dataclasses import asdict
-from app.core.postgres import connection_options
+from pathlib import Path
+from app.core.postgres import PostgresDatabase
 
 from app.models.typing_test import TypingTest
+
+
+SCHEMA_SQL = Path(__file__).with_name("sql").joinpath("typing_tests.sql").read_text(encoding="utf-8")
 
 
 class PostgresTypingTestRepository:
     """SQL, transactions and entity serialization only."""
 
-    def __init__(self, settings):
-        import psycopg
-
-        self.connect = lambda: psycopg.connect(**connection_options(settings))
+    def __init__(self, database: PostgresDatabase):
+        self.connect = database.connection
 
     def initialize(self) -> None:
         with self.connect() as connection:
-            connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS typing_tests (
-                    id UUID PRIMARY KEY,
-                    payload JSONB NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-                """
-            )
-            connection.execute(
-                """
-                CREATE INDEX IF NOT EXISTS typing_tests_created
-                ON typing_tests(created_at)
-                """
-            )
-            connection.execute("ALTER TABLE typing_tests ENABLE ROW LEVEL SECURITY")
+            connection.execute(SCHEMA_SQL)
 
 
     @contextmanager
@@ -47,7 +34,7 @@ class PostgresTypingTestSession:
         row = self.connection.execute(
             "SELECT payload FROM typing_tests WHERE id = %s FOR UPDATE", (test_id,),
         ).fetchone()
-        return TypingTest(**row[0]) if row else None
+        return TypingTest(**row["payload"]) if row else None
 
     def save(self, test: TypingTest) -> None:
         from psycopg.types.json import Jsonb
@@ -59,7 +46,7 @@ class PostgresTypingTestSession:
         )
 
     def count(self) -> int:
-        return self.connection.execute("SELECT COUNT(*) FROM typing_tests").fetchone()[0]
+        return self.connection.execute("SELECT COUNT(*) AS count FROM typing_tests").fetchone()["count"]
 
     def delete_before(self, cutoff: str) -> None:
         self.connection.execute(

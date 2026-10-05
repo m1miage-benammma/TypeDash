@@ -1,5 +1,5 @@
 <div class="mx-auto max-w-[1440px] px-16 max-[800px]:px-8 max-[560px]:px-[18px]">
-  <td-header [currentPage]="currentPage()" (usernameChangeRequested)="usernameModalOpen.set(true)" />
+  <td-header (usernameChangeRequested)="usernameModalOpen.set(true)" />
   <main class="mx-auto min-h-[calc(100vh-184px)] max-w-[1120px] pb-[42px]"><router-outlet /></main>
   <td-footer />
 </div>
