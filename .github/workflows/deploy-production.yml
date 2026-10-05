@@ -61,6 +61,13 @@ jobs:
               sys.exit(1)
           PY
 
+      - name: Check Netlify token and project access
+        if: ${{ inputs.deploy_production }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: python .github/scripts/check-netlify-access.py
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -171,6 +178,7 @@ jobs:
           CI: "true"
         run: |
           netlify deploy --prod --no-build \
+            --site "$NETLIFY_SITE_ID" \
             --dir "$GITHUB_WORKSPACE/published" \
             --message "TypeDash production $RELEASE_COMMIT"
 
