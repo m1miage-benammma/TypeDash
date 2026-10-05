@@ -24,7 +24,7 @@
   </div>
 </section>
 
-<section class="practice-card" [class.is-running]="running()" [attr.aria-label]="t('practice')">
+<section class="practice-card" [attr.aria-label]="t('practice')">
   <div class="test-toolbar">
     <div class="text-options" role="group" [attr.aria-label]="t('textOptions')">
       <button [class.selected]="options()?.punctuation" [attr.aria-pressed]="options()?.punctuation"
@@ -75,40 +75,12 @@
     </div>
   </div>
 
-  @if (result(); as result) {
-    <div class="results" aria-live="polite">
-      <div class="result-heading">
-        <div><p class="eyebrow">{{ t('resultsEyebrow') }}</p><h2>{{ t('resultsTitle') }}</h2><p>{{ t('resultsHint') }}</p></div>
-        <span class="result-stamp"><td-icon name="check" /></span>
-      </div>
-      <div class="result-main">
-        <div><strong>{{ result.wpm | number:'1.1-1' }}</strong><span>{{ t('wpm') }}</span></div>
-        <div><strong>{{ result.accuracy | number:'1.0-1' }}<small>%</small></strong><span>{{ t('accuracy') }}</span></div>
-      </div>
-      <div class="result-details">
-        <span>{{ t('completeWords') }} <b>{{ result.completed_words }}</b></span>
-        <span>{{ t('characters') }} <b>{{ result.correct_characters }}</b></span>
-        <span>{{ t('mistakes') }} <b>{{ result.incorrect_characters }}</b></span>
-        <span>{{ t('elapsed') }} <b>{{ result.elapsed_seconds | number:'1.0-1' }}s</b></span>
-      </div>
-      @if (resultChart().length > 1) {
-        <div class="session-chart" role="img" [attr.aria-label]="t('resultChart')">
-          <div class="chart-bars">
-            @for (sample of resultChart(); track $index) {
-              <div [style.height.%]="sample.height_percent"></div>
-            }
-          </div>
-          <div class="chart-caption"><span>0s</span><span>{{ t('resultChart') }}</span><span>{{ result.elapsed_seconds | number:'1.1-1' }}s</span></div>
-        </div>
-      }
-      <div class="results-foot">
-        <button class="primary-button" (click)="prepare()">{{ t('again') }} <td-icon name="arrow" /></button>
-      </div>
-    </div>
+  @if (result()) {
+    @if (test(); as session) { <td-session-results [test]="session" (again)="prepare()" /> }
   } @else {
     <div class="test-body">
       <div class="passage-toolbar">
-        <span class="inline-timer" [class.active]="running()">
+        <span class="inline-timer" [class.active]="running()" role="timer" [attr.aria-label]="t('timer')">
           <td-icon name="clock" /><strong>{{ clock() }}</strong>
         </span>
         <div class="layout-toggle" role="group" [attr.aria-label]="t('layout')">
@@ -129,7 +101,7 @@
       } @else {
         <td-typing-input [enabled]="canType()" [label]="t('inputLabel')" [language]="options()?.language ?? 'en'"
           (keys)="queueKeys($event)" (pasteBlocked)="showPasteHint()">
-        <div #passage class="passage" [class.word-by-word]="singleLineMode()" [class.active-passage]="engaged()"
+        <div #passage class="passage" [class.word-by-word]="singleLineMode()"
           aria-hidden="true" dir="ltr">
           @for (word of visibleWords(); track word.index) {
             <span class="word">

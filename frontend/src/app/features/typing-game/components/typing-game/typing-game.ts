@@ -16,12 +16,13 @@ import { TypingTest } from '../../responses/typing-test.response';
 import { TypingApiService } from '../../services/typing-api.service';
 import { TypingInputComponent } from '../typing-input/typing-input';
 import { TypingInput } from '../../models/typing-input';
+import { SessionResults } from '../session-results/session-results';
 import { previewWords } from './typing-preview';
 import { TypingConnection, TypingStreamService } from '../../services/typing-stream.service';
 
 @Component({
   selector: 'td-typing-game',
-  imports: [DecimalPipe, Icon, RegistrationModal, ConfirmationModal, TypingInputComponent],
+  imports: [DecimalPipe, Icon, RegistrationModal, ConfirmationModal, TypingInputComponent, SessionResults],
   templateUrl: './typing-game.html',
   styleUrl: './typing-game.css',
 })
@@ -91,7 +92,6 @@ export class TypingGame {
     const test = this.passageSnapshot();
     return test ? previewWords(test, this.pendingInputs(), this.singleLineMode(), true) : [];
   });
-  readonly resultChart = computed(() => this.test()?.view.result_chart ?? []);
 
   private readonly prepareRequests = new Subject<PrepareTestRequest>();
   private readonly pendingInputs = signal<TypingInput[]>([]);

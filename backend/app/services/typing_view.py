@@ -29,9 +29,21 @@ def _prompt_words(test: TypingTest, word_by_word: bool) -> list[dict]:
     return [active_word or words[-1]] if word_by_word and words else words
 
 
-def typing_view(test: TypingTest, word_by_word: bool, *, include_words: bool = True) -> dict:
-    samples = test.result["samples"] if test.result else []
+def result_chart(result: dict | None) -> list[dict]:
+    # Chart presentation uses the actual final score without changing stored samples.
+    samples = list(result["samples"]) if result else []
+    if result:
+        final = {"second": result["elapsed_seconds"], "wpm": result["wpm"]}
+        if samples and samples[-1]["second"] == final["second"]:
+            samples[-1] = final
+        else:
+            samples.append(final)
     maximum = max([10, *(sample["wpm"] for sample in samples)])
+    return [{**sample, "height_percent": sample["wpm"] / maximum * 100}
+            for sample in samples]
+
+
+def typing_view(test: TypingTest, word_by_word: bool, *, include_words: bool = True) -> dict:
     return {
         "words": _prompt_words(test, word_by_word) if include_words else [],
         "active": test.status in (SessionStatus.RUNNING, SessionStatus.PAUSED),
@@ -39,6 +51,5 @@ def typing_view(test: TypingTest, word_by_word: bool, *, include_words: bool = T
         "can_configure": test.status in (SessionStatus.READY, SessionStatus.FINISHED),
         "custom_duration": test.duration not in (15, 30, 60),
         "durations": [15, 30, 60],
-        "result_chart": [{**sample, "height_percent": max(3, sample["wpm"] / maximum * 100)}
-                         for sample in samples] if len(samples) > 1 else [],
+        "result_chart": result_chart(test.result),
     }

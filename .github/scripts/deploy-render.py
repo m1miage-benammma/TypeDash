@@ -1,6 +1,7 @@
 """Trigger one exact Render deployment and fail closed until it is healthy."""
 
 import json
+import logging
 import os
 import re
 import sys
@@ -10,6 +11,7 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlsplit
 
 API_ROOT = "https://api.render.com/v1"
+LOGGER = logging.getLogger(__name__)
 PENDING = {
     "created", "build_in_progress", "pre_deploy_in_progress", "update_in_progress",
 }
@@ -61,7 +63,7 @@ def wait_for_render(service_id, deploy_id, commit, token):
         verify_commit(deploy, commit)
         status = deploy.get("status")
         if status != last_status:
-            print(f"Render status: {status}", flush=True)
+            LOGGER.info("Render status: %s", status)
             last_status = status
         if status == "live":
             return
@@ -108,15 +110,14 @@ def main():
     deploy_id = deploy.get("id", "")
     if not re.fullmatch(r"dep-[a-zA-Z0-9-]+", deploy_id):
         raise DeploymentError("Render did not return a valid deployment ID.")
-    print("Render accepted the deployment; waiting for this commit.", flush=True)
     wait_for_render(service_id, deploy_id, commit, token)
     wait_for_health(origin)
-    print("Requested backend deployment is live and healthy. Frontend may be published.", flush=True)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     try:
         main()
     except DeploymentError as error:
-        print(f"::error::{error}", file=sys.stderr)
+        sys.stderr.write(f"::error::{error}\n")
         sys.exit(1)

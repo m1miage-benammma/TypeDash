@@ -1,0 +1,60 @@
+@if (test().result; as result) {
+  <section class="session-dashboard" [attr.aria-label]="t('sessionDashboard')" aria-live="polite">
+    <header class="dashboard-heading">
+      <div><p class="eyebrow">{{ t('resultsEyebrow') }}</p><h2>{{ t('resultsTitle') }}</h2></div>
+      <span class="finished-at">{{ result.finished_at | date:'dd/MM · HH:mm' }}</span>
+    </header>
+    <div class="dashboard-overview">
+      <div class="session-scores">
+        <div><span class="stat-label">{{ t('wpm') }}</span><strong class="wpm-value">{{ result.wpm | number:'1.1-1' }}</strong><small>WPM</small></div>
+        <div><span class="stat-label">{{ t('accuracy') }}</span><strong class="accuracy-value">{{ result.accuracy | number:'1.0-1' }}<small>%</small></strong></div>
+      </div>
+      <figure class="speed-chart" [attr.aria-label]="t('resultChart')">
+        <figcaption><span>{{ t('resultChart') }}</span><span class="legend"><i></i>WPM</span></figcaption>
+        @if (chart().points.length) {
+          <div class="chart-plot">
+            <div class="y-axis" aria-hidden="true">
+              <span>{{ chart().maximum | number:'1.0-0' }}</span>
+              <span>{{ chart().maximum / 2 | number:'1.0-0' }}</span><span>0</span>
+            </div>
+            <svg viewBox="0 0 1000 200" preserveAspectRatio="none" role="img" [attr.aria-label]="t('resultChart')">
+              <g class="grid" aria-hidden="true">
+                <path d="M0 1H1000 M0 100H1000 M0 199H1000 M250 0V200 M500 0V200 M750 0V200" />
+              </g>
+              @if (chart().area) { <polygon class="area" [attr.points]="chart().area" /> }
+              <polyline class="speed-line" [attr.points]="chart().line" />
+              @for (point of chart().points; track $index) {
+                <ellipse class="sample-dot" [attr.cx]="point.x" [attr.cy]="point.y" rx="3" ry="3">
+                  <title>{{ point.second | number:'1.0-1' }}s · {{ point.wpm | number:'1.1-1' }} WPM</title>
+                </ellipse>
+              }
+            </svg>
+          </div>
+          <div class="x-axis" aria-hidden="true"><span>0s</span><span>{{ result.elapsed_seconds / 2 | number:'1.0-1' }}s</span><span>{{ result.elapsed_seconds | number:'1.0-1' }}s</span></div>
+          <details class="sample-details">
+            <summary>{{ t('speedSamples') }}</summary>
+            <table><thead><tr><th>{{ t('elapsed') }}</th><th>WPM</th></tr></thead>
+              <tbody>@for (point of chart().points; track $index) {
+                <tr><td>{{ point.second | number:'1.0-1' }}s</td><td>{{ point.wpm | number:'1.1-1' }}</td></tr>
+              }</tbody>
+            </table>
+          </details>
+        } @else {
+          <p class="empty-chart">{{ t('noSpeedSamples') }}</p>
+        }
+      </figure>
+    </div>
+    <dl class="session-details">
+      <div class="test-detail"><dt>{{ t('test') }}</dt><dd>{{ test().duration }}s · {{ test().language.toUpperCase() }}</dd>
+        <small>{{ t(test().difficulty) }} @if (test().punctuation) { · @ } @if (test().numbers) { · # }</small>
+      </div>
+      <div><dt>{{ t('characters') }}</dt><dd>{{ result.correct_characters }}<span class="mistake-count" [class.has-mistakes]="result.incorrect_characters > 0"> / {{ result.incorrect_characters }}</span></dd><small>{{ t('characters') }} / {{ t('mistakes') }}</small></div>
+      <div><dt>{{ t('typedCharacters') }}</dt><dd>{{ result.typed_characters }}</dd></div>
+      <div><dt>{{ t('completeWords') }}</dt><dd>{{ result.completed_words }}</dd></div>
+      <div><dt>{{ t('elapsed') }}</dt><dd>{{ result.elapsed_seconds | number:'1.0-1' }}<small>s</small></dd></div>
+    </dl>
+    <footer class="dashboard-footer"><p>{{ t('resultsHint') }}</p>
+      @if (showAgain()) { <button class="again-button" (click)="again.emit()">{{ t('again') }} <td-icon name="arrow" /></button> }
+    </footer>
+  </section>
+}

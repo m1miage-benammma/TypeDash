@@ -23,10 +23,7 @@ class TypingStreamService:
             return self.typing._require_test(storage, str(request.test_id))
 
     def _persist(self, test, device_id):
-        with self.typing.test_repository.transaction() as storage:
-            storage.save(test)
-        if test.result:
-            self.typing._record_result(test, device_id, utc_now().isoformat())
+        self.typing.persist(test, device_id)
 
     def _frame(self, test, now, word_by_word):
         # Static prompt/options are sent once at connection time. Subsequent
@@ -59,6 +56,9 @@ class TypingStreamService:
             test = await asyncio.to_thread(self._load, request)
             checkpoint = (test.revision, test.status, test.active_seconds)
             self.typing.live_tests[test_id] = test
+            if test.result:
+                await asyncio.to_thread(self._persist, deepcopy(test), device_id)
+                final_saved = True
             await socket.send_json(self.typing._response(test, utc_now(), word_by_word).model_dump(mode="json"))
             while not test.result:
                 try:

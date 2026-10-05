@@ -99,7 +99,6 @@ class TypingStreamTests(unittest.IsolatedAsyncioTestCase):
         await self.keys(socket, [(0, "h")])
         response = await self.revision(socket, 0)
         self.assertNotIn("metrics", response)
-        self.assertNotIn("metrics", response)
 
     async def test_api_keeps_only_used_typing_endpoints(self):
         with patch.dict(os.environ, {"TYPEDASH_STORAGE": "memory", "TYPEDASH_RUNTIME_ENVIRONMENT": "development"}):
@@ -134,6 +133,30 @@ class TypingStreamTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(socket.code, 1000)
         self.assertEqual(len(self.devices.stats), 1)
         self.assertEqual(self.tests.find(initial["id"]).typed, "hello world")
+
+    async def test_final_frame_is_sent_only_after_durable_history_is_saved(self):
+        socket, task, initial = await self.start(duration=1)
+        send = socket.send_json
+
+        async def verified_send(response):
+            if response["data"].get("result"):
+                self.assertIn(initial["id"], self.devices.stats)
+                self.assertIsNotNone(self.tests.find(initial["id"]).result)
+            await send(response)
+
+        socket.send_json = verified_send
+        await self.keys(socket, [(0, "h")])
+        await asyncio.wait_for(task, 2)
+
+    async def test_finished_reconnect_recovers_missing_durable_history(self):
+        socket, task, initial = await self.start()
+        await self.keys(socket, list(enumerate("hello world")))
+        await asyncio.wait_for(task, 2)
+        self.devices.stats.clear()
+        _, second_task, recovered = await self.start(test_id=initial["id"])
+        self.assertIsNotNone(recovered["result"])
+        self.assertIn(initial["id"], self.devices.stats)
+        await asyncio.wait_for(second_task, 2)
 
     async def test_idle_pause_is_authoritative(self):
         socket, _, _ = await self.start()

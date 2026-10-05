@@ -9,6 +9,7 @@ export class Dialog {
   @ViewChild('dialog') private dialog?: ElementRef<HTMLDialogElement>;
   readonly label = input.required<string>();
   readonly dismissible = input(true);
+  readonly wide = input(false);
   readonly dismissed = output<void>();
 
   constructor() {

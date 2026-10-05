@@ -44,4 +44,3 @@ for (const file of ['robots.txt', 'sitemap.xml']) {
   const path = resolve(publish, file);
   writeFileSync(path, readFileSync(path, 'utf8').replaceAll('https://typedash.com', siteOrigin), 'utf8');
 }
-console.info('[TypeDash] Static pages, SEO origin and Netlify API proxy configured.');

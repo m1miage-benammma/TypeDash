@@ -1,3 +1,6 @@
+@if (selectedSession(); as statId) {
+  <td-session-details-modal [statId]="statId" (closed)="selectedSession.set(null)" />
+}
 @if (confirmClear()) {
   <td-confirmation-modal [title]="t('clear')" [message]="t('clearConfirm')" [busy]="clearing()"
     [error]="clearError() ? t('clearHistoryFailed') : null"
@@ -65,6 +68,7 @@
           <th class="border-b border-[var(--line)] px-3 py-4 text-left text-[10px] font-medium text-[var(--muted)]">WPM</th>
           <th class="border-b border-[var(--line)] px-3 py-4 text-left text-[10px] font-medium text-[var(--muted)]">{{ t('accuracy') }}</th>
           <th class="border-b border-[var(--line)] px-3 py-4 text-left text-[10px] font-medium text-[var(--muted)]">{{ t('completeWords') }}</th>
+          <th class="border-b border-[var(--line)] px-3 py-4"><span class="sr-only">{{ t('viewSession') }}</span></th>
         </tr></thead>
         <tbody>
           @for (entry of entries(); track entry.id) {
@@ -77,6 +81,11 @@
               <td class="border-b border-[var(--line)] px-3 py-4 text-base font-semibold whitespace-nowrap text-[var(--brand-text)]">{{ entry.wpm | number:'1.1-1' }}</td>
               <td class="border-b border-[var(--line)] px-3 py-4 whitespace-nowrap">{{ entry.accuracy | number:'1.1-1' }}%</td>
               <td class="border-b border-[var(--line)] px-3 py-4 whitespace-nowrap">{{ entry.completed_words }}</td>
+              <td class="border-b border-[var(--line)] px-3 py-4 text-right">
+                <button class="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--accent)]"
+                  [attr.aria-label]="t('viewSession') + ' · ' + (entry.finished_at | date:'dd/MM/yy HH:mm')"
+                  [attr.title]="t('viewSession')" (click)="selectedSession.set(entry.id)"><td-icon name="eye" /></button>
+              </td>
             </tr>
           }
         </tbody>

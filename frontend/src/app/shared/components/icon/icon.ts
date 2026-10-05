@@ -1,24 +1,32 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
+import {
+  faArrowRight, faRotateLeft, faTrophy,
+  faSun, faMoon, faChartLine, faShieldHalved, faBars, faXmark, faEye,
+} from '@fortawesome/free-solid-svg-icons';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faClock } from '@fortawesome/free-regular-svg-icons';
 
-const paths = {
-  arrow: 'M5 12h14m-6-6 6 6-6 6',
-  reset: 'M3 10a9 9 0 1 1 2 8M3 4v6h6',
-  clock: 'M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
-  target: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0M12 11v2',
-  bolt: 'm13 2-9 12h7l-1 8 10-13h-7l1-7Z',
-  trophy: 'M8 3h8v6a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v7m-4 1h8',
-  sun: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
-  moon: 'M20.5 13A8.5 8.5 0 0 1 11 3a9 9 0 1 0 9.5 10Z',
-  chart: 'M4 4v16h17M8 15l4-5 4 2 5-7',
-  check: 'm5 12 4 4L19 6',
-  shield: 'm12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Zm-4 9 3 3 5-6',
-  github: 'M15 22v-4a4.8 4.8 0 0 0-1-3.5c3.3-.4 6.8-1.6 6.8-7A5.4 5.4 0 0 0 19.3 4 5 5 0 0 0 19.2.5S18 0 15 2a13.4 13.4 0 0 0-6 0C6 .1 4.8.5 4.8.5A5 5 0 0 0 4.7 4a5.4 5.4 0 0 0-1.5 3.7c0 5.3 3.5 6.5 6.8 7A4.8 4.8 0 0 0 9 18v4M9 18c-4.5 2-5-2-7-2',
-  menu: 'M4 7h16M4 12h16M4 17h16',
-  close: 'M6 6l12 12M18 6 6 18',
+// Import only the icons used by the app; no remote kit or global DOM scanner.
+const icons = {
+  arrow: faArrowRight, reset: faRotateLeft, clock: faClock,
+  trophy: faTrophy, sun: faSun, moon: faMoon, chart: faChartLine,
+  shield: faShieldHalved, github: faGithub,
+  menu: faBars, close: faXmark, eye: faEye,
 } as const;
+
 @Component({
   selector: 'td-icon',
-  template: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="path" /></svg>',
-  styles: ':host { display:inline-flex; width:1.2em; height:1.2em; flex-shrink:0; } svg { width:100%; height:100%; }',
+  template: `<svg [class.clock-face]="name() === 'clock'" [attr.viewBox]="viewBox()" fill="currentColor" aria-hidden="true" focusable="false">
+    @for (path of paths(); track $index) { <path [attr.d]="path" /> }
+  </svg>`,
+  styles: ':host { display:inline-flex; width:1.2em; height:1.2em; flex-shrink:0; } svg { width:100%; height:100%; } .clock-face { border-radius:50%; background:var(--uga-white); color:var(--uga-orange); }',
 })
-export class Icon { readonly name = input<keyof typeof paths>('arrow'); get path(): string { return paths[this.name()]; } }
+export class Icon {
+  readonly name = input<keyof typeof icons>('arrow');
+  private readonly definition = computed(() => icons[this.name()].icon);
+  readonly viewBox = computed(() => `0 0 ${this.definition()[0]} ${this.definition()[1]}`);
+  readonly paths = computed(() => {
+    const path = this.definition()[4];
+    return typeof path === 'string' ? [path] : path;
+  });
+}

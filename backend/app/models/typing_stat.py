@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -20,4 +20,4 @@ class TypingStat:
     elapsed_seconds: float
     finished_at: str
     created_at: str
-
+    samples: list[dict] = field(default_factory=list)

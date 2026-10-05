@@ -86,6 +86,12 @@ class PostgresDeviceRepository:
             )
             connection.execute(
                 """
+                ALTER TABLE typing_stats ADD COLUMN IF NOT EXISTS
+                    samples JSONB NOT NULL DEFAULT '[]'::jsonb
+                """
+            )
+            connection.execute(
+                """
                 CREATE INDEX IF NOT EXISTS typing_stats_device_finished
                 ON typing_stats(device_id, finished_at DESC)
                 """
@@ -171,20 +177,33 @@ class PostgresDeviceSession:
             "SELECT 1 FROM typing_stats WHERE source_test_id = %s", (UUID(test_id),),
         ).fetchone() is not None
 
+    def find_stat(self, device_id: str, stat_id: str) -> TypingStat | None:
+        row = self.connection.execute(
+            """SELECT id, device_id, source_test_id, difficulty, language,
+               duration_seconds, punctuation, numbers, wpm, accuracy,
+               correct_characters, incorrect_characters, typed_characters,
+               completed_words, elapsed_seconds, finished_at, created_at, samples
+               FROM typing_stats WHERE id = %s AND device_id = %s""",
+            (UUID(stat_id), UUID(device_id)),
+        ).fetchone()
+        return self._stat_from_row(row) if row else None
+
     def save_stat(self, stat: TypingStat) -> None:
+        from psycopg.types.json import Jsonb
+
         self.connection.execute(
             """INSERT INTO typing_stats (
                id, device_id, source_test_id, difficulty, language,
                duration_seconds, punctuation, numbers, wpm, accuracy,
                correct_characters, incorrect_characters, typed_characters,
-               completed_words, elapsed_seconds, finished_at, created_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               completed_words, elapsed_seconds, finished_at, created_at, samples)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (source_test_id) DO NOTHING""",
             (UUID(stat.id), UUID(stat.device_id), UUID(stat.source_test_id),
              stat.difficulty, stat.language, stat.duration, stat.punctuation,
              stat.numbers, stat.wpm, stat.accuracy, stat.correct_characters,
              stat.incorrect_characters, stat.typed_characters, stat.completed_words,
-             stat.elapsed_seconds, stat.finished_at, stat.created_at),
+             stat.elapsed_seconds, stat.finished_at, stat.created_at, Jsonb(stat.samples)),
         )
 
     def delete_stats(self, device_id: str) -> None:
@@ -216,4 +235,5 @@ class PostgresDeviceSession:
             elapsed_seconds=float(value[14]),
             finished_at=_iso(value[15]),
             created_at=_iso(value[16]),
+            samples=value[17] if len(value) > 17 else [],
         )

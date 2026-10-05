@@ -10,10 +10,11 @@ import { Icon } from '../../../shared/components/icon/icon';
 import { ConfirmationModal } from '../../../shared/components/confirmation-modal/confirmation-modal';
 
 import { RevealDirective } from '../../../shared/directives/reveal.directive';
+import { SessionDetailsModal } from '../components/session-details-modal/session-details-modal';
 
 @Component({
   selector: 'td-progress-page',
-  imports: [RevealDirective, DatePipe, DecimalPipe, RouterLink, Icon, ConfirmationModal],
+  imports: [RevealDirective, DatePipe, DecimalPipe, RouterLink, Icon, ConfirmationModal, SessionDetailsModal],
   templateUrl: './progress-page.html',
   host: { class: 'block' },
 })
@@ -27,6 +28,7 @@ export class ProgressPage {
   readonly averageAccuracy = computed(() => this.identity.profile()?.summary.average_accuracy ?? 0);
   readonly historyChart = computed(() => this.identity.profile()?.history_chart ?? []);
   readonly confirmClear = signal(false);
+  readonly selectedSession = signal<string | null>(null);
   readonly clearing = signal(false);
   readonly clearError = signal(false);
   private readonly destroyRef = inject(DestroyRef);

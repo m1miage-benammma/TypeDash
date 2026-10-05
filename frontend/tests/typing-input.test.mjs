@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import ts from 'typescript';
+import { loadTypeScript } from './load-typescript.mjs';
 
-const source = await readFile(new URL('../src/app/features/typing-game/components/typing-input/input-keys.ts', import.meta.url), 'utf8');
-const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-const { inputKeys } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const { inputKeys } = await loadTypeScript('../src/app/features/typing-game/components/typing-input/input-keys.ts', import.meta.url);
 
 test('native desktop and mobile input send characters and spaces once', () => {
   assert.deepEqual(inputKeys('insertText', 'a', ' a'), ['a']);

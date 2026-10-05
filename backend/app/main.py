@@ -31,7 +31,7 @@ typing_service = TypingService(test_repository, device_repository, PromptService
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     if settings.storage == "memory":
         logging.warning(
             "TypeDash uses volatile memory storage "

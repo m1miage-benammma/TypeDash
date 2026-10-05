@@ -48,6 +48,10 @@ class MemoryDeviceRepository:
     def has_stat(self, test_id: str) -> bool:
         return test_id in self.stats
 
+    def find_stat(self, device_id: str, stat_id: str) -> TypingStat | None:
+        return next((stat for stat in self.stats.values()
+                     if stat.id == stat_id and stat.device_id == device_id), None)
+
     def save_stat(self, stat: TypingStat) -> None:
         self.stats[stat.source_test_id] = stat
 

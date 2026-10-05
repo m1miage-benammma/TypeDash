@@ -1,4 +1,4 @@
-"""Read-only Netlify preflight; never print credentials or API response bodies."""
+"""Read-only Netlify preflight; never log credentials or API response bodies."""
 
 import json
 import os
@@ -57,16 +57,14 @@ def main():
     user = get_json("/user", token, "the token's account")
     if not user.get("id"):
         raise AccessError("Netlify did not confirm the token's account. Deployment blocked.")
-    print("Netlify token authenticated successfully.", flush=True)
     site = get_json("/sites/" + site_id, token, "the configured project")
     if site.get("id", "").lower() != site_id.lower():
         raise AccessError("Netlify did not confirm the requested project ID. Deployment blocked.")
-    print("Netlify project found and readable by this token. Write permissions are checked during deployment.", flush=True)
 
 
 if __name__ == "__main__":
     try:
         main()
     except AccessError as error:
-        print(f"::error::{error}", file=sys.stderr)
+        sys.stderr.write(f"::error::{error}\n")
         sys.exit(1)

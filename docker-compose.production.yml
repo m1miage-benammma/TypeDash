@@ -1,5 +1,3 @@
-# Standalone file: do NOT combine it with the local development compose file.
-# Netlify serves the real frontend; Supabase hosts PostgreSQL externally.
 services:
   backend:
     build:

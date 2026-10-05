@@ -1,0 +1,16 @@
+<td-dialog [label]="t('sessionDashboard')" [wide]="true" (dismissed)="closed.emit()">
+  <div class="flex items-center justify-between border-b border-[var(--line)] px-6 py-3">
+    <span class="text-xs text-[var(--muted)]">{{ t('sessionDashboard') }}</span>
+    <button class="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--ink)] hover:bg-[var(--surface-soft)]"
+      [attr.aria-label]="t('close')" (click)="closed.emit()"><td-icon name="close" /></button>
+  </div>
+  @if (loading()) {
+    <p class="p-8 text-sm text-[var(--muted)]" role="status">{{ t('loadingSession') }}</p>
+  } @else if (failed()) {
+    <div class="p-8"><p role="alert">{{ t('sessionLoadFailed') }}</p>
+      <button class="rounded-lg bg-[var(--uga-navy)] px-5 py-3 text-xs text-white" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (session(); as details) {
+    <td-session-results [test]="details" [showAgain]="false" />
+  }
+</td-dialog>

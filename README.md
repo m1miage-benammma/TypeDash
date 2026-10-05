@@ -56,6 +56,12 @@ The native textarea opens the phone keyboard directly on tap. Its input adapter 
 
 The progress summary uses **all** persisted device sessions, even though the recent-history list displays at most 30. Average WPM is the sum of each session's WPM divided by the session count; best WPM is the maximum. Both are displayed with one decimal place, including the personal best above the typing test.
 
+The eye button at the right of each history row opens that session's dashboard. Details are fetched from `/api/devices/{device_id}/stats/{stat_id}` and scoped to the device. Scores and speed samples are stored together in `typing_stats`; they remain available after temporary `typing_tests` cleanup. In Postgres, completed tests and statistics commit in one transaction before the final WebSocket frame. An idempotent `samples JSONB` column addition runs during normal backend initialization; no manual SQL is required. Older rows without recorded samples still show their saved scores and final point, not an invented speed curve.
+
+UI icons use individually imported Font Awesome Free SVG definitions, bundled locally; no remote kit, emoji substitution or favicon-as-icon is used. The TypeDash logo and browser favicon remain branding assets.
+
+The Font Awesome Regular clock has an orange outline and a white face in both themes. Source hygiene checks reject ad-hoc console/print logging and unused Python imports; TypeScript also checks unused locals and parameters. Bootstrap failures display a reload action instead of a console-only error. Production Uvicorn access logs are disabled to avoid repeated health-check noise; server warnings/errors and GitHub Actions failure annotations remain available.
+
 The former HTTP `/input`, `/inputs`, `/progress`, `/finish`, and root `/` routes have been removed. Session creation/recovery, the WebSocket stream, device/profile APIs, the calculator, and `/api/health` remain. Interactive API documentation is available locally only, not in production. Logo assets belong to the frontend.
 
 Database checkpoints run in the background approximately once per second, and sessions are saved on disconnect. Final results are published only after the session and device-linked statistics have been persisted. Reconnection replays unacknowledged input (and recent acknowledged input if the server recovered from an older checkpoint), using sequence numbers to avoid duplicates.

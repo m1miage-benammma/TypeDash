@@ -30,4 +30,4 @@ COPY --chown=appuser:appuser app ./app
 USER appuser
 ENV TYPEDASH_RUNTIME_ENVIRONMENT=production
 # Secrets are injected by the host; no .env file or credential is copied.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\""]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" --no-access-log"]

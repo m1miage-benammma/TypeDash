@@ -1,4 +1,5 @@
 from datetime import timedelta
+from copy import deepcopy
 from uuid import uuid4
 
 from app.api.responses.api import ApiResponse
@@ -10,7 +11,7 @@ from app.services.device_service import DeviceService
 from app.core.clock import utc_now
 from app.models.typing_stat import TypingStat
 from app.models.typing_test import TypingTest
-from app.repositories.device_repository import PostgresDeviceRepository
+from app.repositories.device_repository import PostgresDeviceRepository, PostgresDeviceSession
 from app.repositories.memory_device_repository import MemoryDeviceRepository
 from app.repositories.memory_typing_test_repository import MemoryTypingTestRepository
 from app.repositories.typing_test_repository import PostgresTypingTestRepository
@@ -62,9 +63,17 @@ class TypingService:
             test = self._require_test(storage, str(request.test_id))
             update_test(test, test.typed, test.revision, elapsed(test, now) >= test.duration, now)
             storage.save(test)
-        if request.device_id:
-            self._record_result(test, str(request.device_id), now.isoformat())
+            if request.device_id:
+                self._record_result(test, str(request.device_id), now.isoformat(), test_storage=storage)
         return self._response(test, now, request.word_by_word)
+
+    def persist(self, test: TypingTest, device_id: str) -> None:
+        # In Postgres, the test and durable statistics commit together. A final
+        # frame is sent only after this transaction succeeds.
+        with self.test_repository.transaction() as storage:
+            storage.save(test)
+            if test.result:
+                self._record_result(test, device_id, utc_now().isoformat(), test_storage=storage)
 
     @staticmethod
     def _require_test(storage, test_id: str) -> TypingTest:
@@ -101,30 +110,39 @@ class TypingService:
         test: TypingTest,
         device_id: str,
         created_at: str,
+        *, test_storage=None,
     ) -> None:
+        if isinstance(self.device_repository, PostgresDeviceRepository) and hasattr(test_storage, "connection"):
+            self._save_result(PostgresDeviceSession(test_storage.connection), test, device_id, created_at)
+            return
         with self.device_repository.transaction() as storage:
-            DeviceService.touch(storage, device_id, created_at)
-            if not test.result or storage.has_stat(test.id):
-                return
-            result = test.result
-            storage.save_stat(
-                TypingStat(
-                    id=str(uuid4()),
-                    device_id=device_id,
-                    source_test_id=test.id,
-                    difficulty=str(test.difficulty),
-                    language=str(test.language),
-                    duration=test.duration,
-                    punctuation=test.punctuation,
-                    numbers=test.numbers,
-                    wpm=result["wpm"],
-                    accuracy=result["accuracy"],
-                    correct_characters=result["correct_characters"],
-                    incorrect_characters=result["incorrect_characters"],
-                    typed_characters=result["typed_characters"],
-                    completed_words=result["completed_words"],
-                    elapsed_seconds=result["elapsed_seconds"],
-                    finished_at=result["finished_at"],
-                    created_at=created_at,
-                )
+            self._save_result(storage, test, device_id, created_at)
+
+    @staticmethod
+    def _save_result(storage, test: TypingTest, device_id: str, created_at: str) -> None:
+        DeviceService.touch(storage, device_id, created_at)
+        if not test.result or storage.has_stat(test.id):
+            return
+        result = test.result
+        storage.save_stat(
+            TypingStat(
+                id=str(uuid4()),
+                device_id=device_id,
+                source_test_id=test.id,
+                difficulty=str(test.difficulty),
+                language=str(test.language),
+                duration=test.duration,
+                punctuation=test.punctuation,
+                numbers=test.numbers,
+                wpm=result["wpm"],
+                accuracy=result["accuracy"],
+                correct_characters=result["correct_characters"],
+                incorrect_characters=result["incorrect_characters"],
+                typed_characters=result["typed_characters"],
+                completed_words=result["completed_words"],
+                elapsed_seconds=result["elapsed_seconds"],
+                finished_at=result["finished_at"],
+                created_at=created_at,
+                samples=deepcopy(result["samples"]),
             )
+        )

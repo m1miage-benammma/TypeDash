@@ -1,6 +1,7 @@
 <dialog #dialog
   class="fixed inset-0 m-auto max-h-[calc(100dvh-40px)] w-[calc(100%_-_40px)] max-w-[390px] overflow-y-auto rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-6 text-[var(--ink)] shadow-[0_24px_80px_#0004] backdrop:bg-[#171927cc] backdrop:backdrop-blur-[3px]"
   [attr.aria-label]="label()" aria-modal="true"
+  [style.max-width]="wide() ? '1120px' : null" [style.padding]="wide() ? '0' : null"
   (cancel)="cancel($event)" (click)="onBackdropClick($event)">
   <ng-content />
 </dialog>
