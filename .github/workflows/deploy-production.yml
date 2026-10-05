@@ -1,0 +1,184 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: "Deploy to production after successful builds (disable for build verification only)"
+        required: true
+        default: true
+        type: boolean
+
+run-name: "TypeDash — ${{ inputs.deploy_production && 'production deployment' || 'build verification' }} — ${{ github.sha }}"
+
+permissions:
+  contents: read
+
+# Never interrupt a production deploy with a second button click.
+concurrency:
+  group: typedash-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify production builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Only allow production from main
+        env:
+          SELECTED_REF: ${{ github.ref }}
+        run: |
+          if [ "$SELECTED_REF" != "refs/heads/main" ]; then
+            echo "::error::Select main when running Deploy production."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check deployment configuration
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          TYPEDASH_API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
+          TYPEDASH_SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
+          DEPLOY_PRODUCTION: ${{ inputs.deploy_production }}
+        run: |
+          python - <<'PY'
+          import os, sys
+          required = ["TYPEDASH_API_ORIGIN", "TYPEDASH_SITE_ORIGIN"]
+          if os.environ["DEPLOY_PRODUCTION"] == "true":
+              required.extend(("RENDER_API_KEY", "RENDER_SERVICE_ID",
+                               "NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID"))
+          missing = [name for name in required if not os.environ.get(name, "").strip()]
+          if missing:
+              print("::error::Missing GitHub Actions configuration: " + ", ".join(missing))
+              sys.exit(1)
+          PY
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build and prerender frontend
+        working-directory: frontend
+        env:
+          TYPEDASH_API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
+          TYPEDASH_SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
+        run: npm run build:netlify
+
+      - name: Build backend production image
+        run: docker build --target production --tag typedash-backend:verify ./backend
+
+      - name: Verify backend imports and API schema
+        run: |
+          docker run --rm \
+            -e TYPEDASH_STORAGE=memory \
+            -e TYPEDASH_RUNTIME_ENVIRONMENT=development \
+            typedash-backend:verify \
+            python -c "from app.main import app; assert '/api/tests/{test_id}/input' in app.openapi()['paths']"
+
+      - name: Preserve the verified frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-frontend-${{ github.sha }}
+          path: frontend/dist/frontend/browser/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Build verification summary
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+          DEPLOY_PRODUCTION: ${{ inputs.deploy_production }}
+        run: |
+          echo "### TypeDash builds verified" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: $RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
+          echo "Angular prerender and backend Docker/API checks passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Frontend artifact: production-frontend-$RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$DEPLOY_PRODUCTION" != "true" ]; then
+            echo "Build-only run: no production deployment requested." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  deploy_backend:
+    name: Deploy backend and wait for Render
+    needs: verify
+    if: ${{ inputs.deploy_production }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Deploy this exact commit and wait for live status
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          TYPEDASH_API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: python .github/scripts/deploy-render.py
+
+      - name: Backend deployment summary
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+          API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
+        run: |
+          echo "### Backend deployed successfully" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: $RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
+          echo "Backend: $API_ORIGIN" >> "$GITHUB_STEP_SUMMARY"
+          echo "Render confirmed live status and the health check passed." >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_frontend:
+    name: Publish verified frontend to Netlify
+    # Default success gating: never publish after a failed/cancelled backend job.
+    needs: [verify, deploy_backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download verified frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: production-frontend-${{ github.sha }}
+          path: published
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned Netlify CLI
+        run: npm install --global netlify-cli@27.10.2
+
+      - name: Publish production without rebuilding
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          CI: "true"
+        run: |
+          netlify deploy --prod --no-build \
+            --dir "$GITHUB_WORKSPACE/published" \
+            --message "TypeDash production $RELEASE_COMMIT"
+
+      - name: Deployment summary
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+          SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
+        run: |
+          echo "### TypeDash published" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: $RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
+          echo "Frontend: $SITE_ORIGIN" >> "$GITHUB_STEP_SUMMARY"

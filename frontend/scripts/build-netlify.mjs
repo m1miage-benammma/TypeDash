@@ -30,6 +30,15 @@ if (result.status !== 0) process.exit(result.status ?? 1);
 
 writeFileSync(resolve(publish, '_redirects'),
   `/api/* ${apiOrigin}/api/:splat 200!\n/* /index.csr.html 200\n`, 'utf8');
+// CLI uploads do not read the repository's netlify.toml: preserve its headers.
+writeFileSync(resolve(publish, '_headers'), [
+  '/api/*',
+  '  Cache-Control: no-store',
+  '/*',
+  '  X-Content-Type-Options: nosniff',
+  '  Referrer-Policy: strict-origin-when-cross-origin',
+  '',
+].join('\n'), 'utf8');
 for (const file of ['robots.txt', 'sitemap.xml']) {
   const path = resolve(publish, file);
   writeFileSync(path, readFileSync(path, 'utf8').replaceAll('https://typedash.com', siteOrigin), 'utf8');
