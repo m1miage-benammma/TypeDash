@@ -6,8 +6,9 @@ from app.api.schemas.api import ApiResponse
 from app.api.schemas.typing import (
     CreateTypingTestRequest, GetTypingTestRequest,
     UpdateTypingTestRequest, UpdateTypingInputRequest, TypingTestResponse,
+    UpdateTypingBatchRequest,
 )
-from app.dependencies import get_test_request, get_progress_request, get_input_request
+from app.dependencies import get_test_request, get_progress_request, get_input_request, get_batch_request
 from app.services.typing_service import TypingService
 
 
@@ -35,5 +36,9 @@ def create_router(service: TypingService) -> APIRouter:
     @router.put("/{test_id}/input", response_model=ApiResponse[TypingTestResponse])
     def input_key(request: Annotated[UpdateTypingInputRequest, Depends(get_input_request)]) -> ApiResponse[TypingTestResponse]:
         return service.input(request)
+
+    @router.put("/{test_id}/inputs", response_model=ApiResponse[TypingTestResponse])
+    def input_batch(request: Annotated[UpdateTypingBatchRequest, Depends(get_batch_request)]) -> ApiResponse[TypingTestResponse]:
+        return service.input_batch(request)
 
     return router

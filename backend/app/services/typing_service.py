@@ -5,6 +5,7 @@ from app.api.schemas.api import ApiResponse
 from app.api.schemas.typing import (
     CreateTypingTestRequest, GetTypingTestRequest,
     UpdateTypingTestRequest, UpdateTypingInputRequest, TypingTestResponse,
+    UpdateTypingBatchRequest,
 )
 from app.models.errors import TypingTestError
 from app.services.device_service import DeviceService
@@ -76,6 +77,16 @@ class TypingService:
 
     def progress(self, request: UpdateTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         return self._update(request, finish=False)
+
+    def input_batch(self, request: UpdateTypingBatchRequest) -> ApiResponse[TypingTestResponse]:
+        now = utc_now()
+        with self.test_repository.transaction() as storage:
+            test = self._require_test(storage, str(request.test_id))
+            for entry in request.inputs:
+                apply_input(test, entry.key, entry.sequence, entry.word_by_word, now)
+            storage.save(test)
+        self._record_result(test, str(request.device_id), now.isoformat())
+        return self._response(test, now, request.inputs[-1].word_by_word)
 
     def finish(self, request: UpdateTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         return self._update(request, finish=True)

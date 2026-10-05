@@ -73,6 +73,8 @@ class TypingTestResponse(BaseModel):
     metrics: TypingMetricsResponse
     result: TypingResultResponse | None
     view: 'TypingViewResponse'
+    auto_inserted_separator: bool = False
+    input_word_by_word: bool = False
 
 class TypingInputRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -83,6 +85,23 @@ class TypingInputRequest(BaseModel):
 
 
 class UpdateTypingInputRequest(TypingInputRequest):
+    test_id: UUID
+
+
+class TypingKeyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sequence: int = Field(ge=0, strict=True)
+    key: str = Field(max_length=64)
+    word_by_word: bool = False
+
+
+class TypingBatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    device_id: UUID
+    inputs: list[TypingKeyRequest] = Field(min_length=1, max_length=256)
+
+
+class UpdateTypingBatchRequest(TypingBatchRequest):
     test_id: UUID
 
 

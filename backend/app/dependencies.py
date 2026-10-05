@@ -4,6 +4,7 @@ from app.api.schemas.device import DeviceRequest, DeviceUsernameRequest, Usernam
 from app.api.schemas.typing import (
     GetTypingTestRequest, TypingProgressRequest, UpdateTypingTestRequest,
     TypingInputRequest, UpdateTypingInputRequest,
+    TypingBatchRequest, UpdateTypingBatchRequest,
 )
 
 
@@ -24,3 +25,7 @@ def get_progress_request(test_id: UUID, body: TypingProgressRequest) -> UpdateTy
 
 def get_input_request(test_id: UUID, body: TypingInputRequest) -> UpdateTypingInputRequest:
     return UpdateTypingInputRequest(test_id=test_id, **body.model_dump())
+
+
+def get_batch_request(test_id: UUID, body: TypingBatchRequest) -> UpdateTypingBatchRequest:
+    return UpdateTypingBatchRequest(test_id=test_id, **body.model_dump())

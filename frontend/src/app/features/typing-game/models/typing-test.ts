@@ -39,6 +39,14 @@ export interface TypingTest extends TestOptions {
   metrics: Metrics;
   result: TestResult | null;
   view: TypingView;
+  auto_inserted_separator?: boolean;
+  input_word_by_word?: boolean;
+}
+
+export interface TypingInput {
+  key: string;
+  sequence: number;
+  wordByWord: boolean;
 }
 
 export interface PromptWord {

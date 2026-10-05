@@ -2,7 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, ElementRef, inject, signal, untracked, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { EMPTY, Subject, catchError, concatMap, exhaustMap, finalize, interval, switchMap, takeUntil, tap } from 'rxjs';
+import { EMPTY, Subject, catchError, exhaustMap, finalize, interval, switchMap, takeUntil, tap } from 'rxjs';
 
 import { I18nService } from '../../../../core/services/i18n.service';
 import { DeviceIdentityService } from '../../../../core/services/device-identity.service';
@@ -12,6 +12,7 @@ import { ConfirmationModal } from '../../../../shared/components/confirmation-mo
 import { Icon } from '../../../../shared/components/icon/icon';
 import { Difficulty, PrepareTestRequest, TypingTest } from '../../models/typing-test';
 import { TypingApiService } from '../../services/typing-api.service';
+import { previewWords } from './typing-preview';
 
 interface InputMessage {
   testId: string;
@@ -58,9 +59,9 @@ export class TypingGame {
   readonly best = computed(() => this.identity.profile()?.summary.best_wpm ?? 0);
   readonly averageWpm = computed(() => this.identity.profile()?.summary.average_wpm ?? 0);
   readonly averageAccuracy = computed(() => this.identity.profile()?.summary.average_accuracy ?? 0);
-  readonly engaged = computed(() => this.test()?.view.active ?? false);
+  readonly engaged = computed(() => (this.test()?.view.active ?? false) || this.pendingInputs().length > 0);
   readonly running = computed(() => this.test()?.status === 'running');
-  readonly locked = computed(() => this.loading() || this.saveError() || this.test()?.view.can_configure === false);
+  readonly locked = computed(() => this.loading() || this.saveError() || this.pendingInputs().length > 0 || this.test()?.view.can_configure === false);
   readonly result = computed(() => this.test()?.result ?? null);
   readonly canType = computed(() => this.test()?.view.can_type === true
     && !this.loading() && !this.loadError() && !this.saveError()
@@ -70,14 +71,17 @@ export class TypingGame {
   readonly singleLineMode = computed(() => this.isMobile() || this.preferences.singleLine());
   readonly clock = computed(() => this.test()?.view.clock ?? '—');
   readonly elapsedPercent = computed(() => this.test()?.view.elapsed_percent ?? 0);
-  readonly visibleWords = computed(() => this.test()?.view.words ?? []);
+  readonly visibleWords = computed(() => {
+    const test = this.test();
+    return test ? previewWords(test, this.pendingInputs(), this.singleLineMode()) : [];
+  });
   readonly resultChart = computed(() => this.test()?.view.result_chart ?? []);
 
   private readonly prepareRequests = new Subject<PrepareTestRequest>();
-  private readonly inputMessages = new Subject<InputMessage>();
+  private readonly pendingInputs = signal<InputMessage[]>([]);
   private readonly stopRequests = new Subject<void>();
   private sequence = -1;
-  private failedInput: InputMessage | null = null;
+  private failedBatch: InputMessage[] | null = null;
 
   constructor() {
     this.prepareRequests.pipe(
@@ -86,10 +90,11 @@ export class TypingGame {
         this.loadError.set(false);
         this.durationError.set(null);
         this.stopRequests.next();
+        this.pendingInputs.set([]);
         return this.api.prepare(options).pipe(
           tap(test => {
             this.sequence = test.revision;
-            this.failedInput = null;
+            this.failedBatch = null;
             this.saveError.set(false);
             this.offline.set(false);
             this.pasteHint.set(false);
@@ -114,11 +119,11 @@ export class TypingGame {
       takeUntilDestroyed(),
     ).subscribe();
 
-    this.inputMessages.pipe(
-      concatMap(message => {
-        // Discard transport messages belonging to a replaced screen/session.
-        if (message.testId !== this.test()?.id || this.saveError()) return EMPTY;
-        return this.sendInput(message).pipe(takeUntil(this.stopRequests));
+    interval(40).pipe(
+      exhaustMap(() => {
+        const batch = this.pendingInputs().slice(0, 256);
+        if (!batch.length || this.loading() || this.saveError()) return EMPTY;
+        return this.sendInputs(batch).pipe(takeUntil(this.stopRequests));
       }),
       takeUntilDestroyed(),
     ).subscribe();
@@ -126,7 +131,7 @@ export class TypingGame {
     interval(250).pipe(
       exhaustMap(() => {
         const test = this.test();
-        if (!test || test.status !== 'running' || this.loading() || this.saveError()) return EMPTY;
+        if (!test || test.status !== 'running' || this.loading() || this.saveError() || this.pendingInputs().length) return EMPTY;
         return this.api.get(test.id, this.identity.deviceId(), this.singleLineMode()).pipe(
           takeUntil(this.stopRequests),
           tap(response => this.accept(response)),
@@ -227,24 +232,24 @@ export class TypingGame {
     const test = this.test();
     if (!test || !this.canType()) return;
     this.identity.ensureDeviceId();
-    this.inputMessages.next({
+    this.pendingInputs.update(pending => [...pending, {
       testId: test.id, key: event.key, sequence: ++this.sequence,
       wordByWord: this.singleLineMode(),
-    });
+    }]);
+    this.scrollCaret();
   }
 
-  private sendInput(message: InputMessage) {
-    return this.api.input(
-      message.testId, this.identity.ensureDeviceId(),
-      message.key, message.sequence, message.wordByWord,
+  private sendInputs(batch: InputMessage[]) {
+    return this.api.inputs(
+      batch[0].testId, this.identity.ensureDeviceId(), batch,
     ).pipe(
       tap(test => {
-        this.failedInput = null;
+        this.failedBatch = null;
         this.accept(test);
       }),
       catchError(() => {
-        if (message.testId === this.test()?.id) {
-          this.failedInput = message;
+        if (batch[0].testId === this.test()?.id) {
+          this.failedBatch = batch;
           this.saveError.set(true);
         }
         return EMPTY;
@@ -259,6 +264,7 @@ export class TypingGame {
     if (test.revision === current.revision && test.observed_at < current.observed_at) return;
     const previouslyFinished = !!current.result;
     this.test.set(test);
+    this.pendingInputs.update(pending => test.result ? [] : pending.filter(input => input.sequence > test.revision));
     this.offline.set(false);
     setTimeout(() => this.scrollCaret());
     if (test.result && !previouslyFinished) {
@@ -295,15 +301,15 @@ export class TypingGame {
   }
 
   finish(): void {
-    if (!this.failedInput || this.finishing()) return;
+    if (!this.failedBatch || this.finishing()) return;
     this.finishing.set(true);
-    this.saveError.set(false);
     // Retry the same transport sequence; the backend handles idempotency.
-    this.sendInput(this.failedInput).pipe(
+    this.sendInputs(this.failedBatch).pipe(
       takeUntilDestroyed(this.destroyRef),
+      tap(() => this.saveError.set(false)),
       finalize(() => {
         this.finishing.set(false);
-        this.sequence = this.test()?.revision ?? -1;
+        this.sequence = Math.max(this.sequence, this.test()?.revision ?? -1);
         this.focusInput();
       }),
     ).subscribe();
