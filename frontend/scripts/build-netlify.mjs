@@ -1,3 +1,4 @@
+import { prepareStaticPages } from './prepare-static-pages.mjs';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +19,8 @@ function publicOrigin(value, name) {
 
 // Only public addresses are read here. Never expose database credentials or keys.
 const apiOrigin = publicOrigin(process.env.TYPEDASH_API_ORIGIN, 'TYPEDASH_API_ORIGIN');
-const siteOrigin = publicOrigin(process.env.TYPEDASH_SITE_ORIGIN || 'https://typedash.online', 'TYPEDASH_SITE_ORIGIN');
+// Canonicals describe the public domain, never the Netlify deployment hostname.
+const siteOrigin = 'https://typedash.online';
 if (apiOrigin === siteOrigin) throw new Error('API origin must point to the separately hosted FastAPI backend.');
 
 const result = spawnSync(process.execPath, [
@@ -29,9 +31,13 @@ const result = spawnSync(process.execPath, [
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
+const prerendered = JSON.parse(readFileSync(resolve(frontend, 'dist/frontend/prerendered-routes.json'), 'utf8'));
+const staticRewrites = prepareStaticPages(publish, Object.keys(prerendered.routes));
+
 const legacyPaths = {
-  "/en/typing-test": "/typing-test",
-  "/fr/test-de-frappe": "/typing-test",
+  "/typing-test": "/",
+  "/en/typing-test": "/",
+  "/fr/test-de-frappe": "/",
   "/en/typing-speed-guide": "/typing-speed-guide",
   "/fr/guide-vitesse-frappe": "/typing-speed-guide",
   "/en/improve-typing-accuracy": "/improve-typing-accuracy",
@@ -58,6 +64,7 @@ writeFileSync(resolve(publish, '_redirects'),
     ]),
     `/api/* ${apiOrigin}/api/:splat 200!`,
     ...Object.entries(legacyPaths).map(([from, to]) => `${from} ${siteOrigin}${to} 301!`),
+    ...staticRewrites,
     '/* /index.csr.html 200',
     '',
   ].join('\n'), 'utf8');
@@ -68,8 +75,6 @@ writeFileSync(resolve(publish, '_headers'), [
   '/*',
   '  X-Content-Type-Options: nosniff',
   '  Referrer-Policy: strict-origin-when-cross-origin',
-  '/progress',
-  '  X-Robots-Tag: noindex, follow',
   '',
 ].join('\n'), 'utf8');
 for (const file of ['robots.txt', 'sitemap.xml']) {

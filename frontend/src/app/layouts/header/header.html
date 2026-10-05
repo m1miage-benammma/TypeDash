@@ -1,5 +1,5 @@
 <header class="site-header relative flex h-[98px] items-center gap-8 border-b border-[var(--line)] max-[800px]:gap-5 max-[560px]:h-auto max-[560px]:flex-wrap max-[560px]:justify-between max-[560px]:py-[18px]">
-  <a class="inline-flex items-center text-[28px] font-bold tracking-[-1.3px] max-[560px]:text-[23px]" routerLink="/" aria-label="TypeDash">
+  <a class="inline-flex items-center text-[28px] font-bold tracking-[-1.3px] max-[560px]:text-[23px]" [routerLink]="routeFor('typingTest')" aria-label="TypeDash">
     <img class="mr-3 size-9 rounded-[10px] max-[560px]:mr-2 max-[560px]:size-8"
       [src]="preferences.dark() ? '/typedash-logo-dark.svg' : '/typedash-logo.svg'" alt="" />
     <span>type</span><span class="font-normal">dash</span>

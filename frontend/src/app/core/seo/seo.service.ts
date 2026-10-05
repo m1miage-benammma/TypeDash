@@ -60,25 +60,16 @@ export class SeoService {
       name: 'TypeDash',
       inLanguage: ['en', 'fr'],
     };
-    const pageSchema = page.pageType === 'application'
-      ? {
-          '@type': 'SoftwareApplication',
-          name: page.title.split('|')[0].trim(),
-          applicationCategory: 'EducationalApplication',
-          operatingSystem: 'Web',
-          url: canonicalUrl,
-          description: page.description,
-          inLanguage: page.language,
-          offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-        }
-      : {
-          '@type': page.pageType === 'article' ? 'Article' : 'WebPage',
-          headline: page.title.split('|')[0].trim(),
-          url: canonicalUrl,
-          description: page.description,
-          inLanguage: page.language,
-          isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
-        };
+    const pageSchema = {
+      '@type': page.pageType === 'article' ? 'Article' : 'WebPage',
+      '@id': canonicalUrl + '#page',
+      name: page.title.split('|')[0].trim(),
+      headline: page.title.split('|')[0].trim(),
+      url: canonicalUrl,
+      description: page.description,
+      inLanguage: page.language,
+      isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
+    };
 
     script.textContent = JSON.stringify({
       '@context': 'https://schema.org',

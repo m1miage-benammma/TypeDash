@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { homeSeo, privateSeo, publicSeo } from './core/seo/seo-pages';
+import { privateSeo, publicSeo } from './core/seo/seo-pages';
 
 const typingTestPage = () => import('./features/typing-game/pages/typing-test-page').then(module => module.TypingTestPage);
 const progressPage = () => import('./features/progress/pages/progress-page').then(module => module.ProgressPage);
@@ -14,17 +14,17 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./layouts/app-shell/app-shell').then(module => module.AppShell),
     children: [
-      { path: '', pathMatch: 'full', loadComponent: () => import('./features/content/pages/home-page').then(module => module.HomePage), data: { pageId: 'typingTest', seo: homeSeo } },
+      { path: '', pathMatch: 'full', loadComponent: typingTestPage, data: { pageId: 'typingTest', seo: publicSeo('typingTest', 'en') } },
 
-      { path: 'typing-test', loadComponent: typingTestPage, data: { pageId: 'typingTest', seo: publicSeo('typingTest', 'en') } },
+      { path: 'typing-test', pathMatch: 'full', redirectTo: '' },
       { path: 'typing-speed-guide', loadComponent: typingSpeedGuidePage, data: { pageId: 'typingSpeedGuide', seo: publicSeo('typingSpeedGuide', 'en') } },
       { path: 'improve-typing-accuracy', loadComponent: accuracyGuidePage, data: { pageId: 'accuracyGuide', seo: publicSeo('accuracyGuide', 'en') } },
       { path: 'wpm-calculator', loadComponent: wpmCalculatorPage, data: { pageId: 'wpmCalculator', seo: publicSeo('wpmCalculator', 'en') } },
       { path: 'typing-test-for-programmers', loadComponent: programmerTypingTestPage, data: { pageId: 'programmerTest', seo: publicSeo('programmerTest', 'en') } },
       { path: 'progress', loadComponent: progressPage, data: { pageId: 'progress', seo: privateSeo('en') } },
 
-      { path: 'en/typing-test', pathMatch: 'full', redirectTo: 'typing-test' },
-      { path: 'fr/test-de-frappe', pathMatch: 'full', redirectTo: 'typing-test' },
+      { path: 'en/typing-test', pathMatch: 'full', redirectTo: '' },
+      { path: 'fr/test-de-frappe', pathMatch: 'full', redirectTo: '' },
       { path: 'en/typing-speed-guide', pathMatch: 'full', redirectTo: 'typing-speed-guide' },
       { path: 'fr/guide-vitesse-frappe', pathMatch: 'full', redirectTo: 'typing-speed-guide' },
       { path: 'en/improve-typing-accuracy', pathMatch: 'full', redirectTo: 'improve-typing-accuracy' },
@@ -37,5 +37,5 @@ export const routes: Routes = [
       { path: 'fr/progres', pathMatch: 'full', redirectTo: 'progress' },
     ],
   },
-  { path: '**', redirectTo: 'typing-test' },
+  { path: '**', redirectTo: '' },
 ];

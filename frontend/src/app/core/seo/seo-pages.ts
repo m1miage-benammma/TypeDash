@@ -15,17 +15,11 @@ export interface SeoPage {
   path: string;
   title: string;
   description: string;
-  pageType: 'application' | 'article' | 'private' | 'home';
+  pageType: 'application' | 'article' | 'private';
   robots?: 'index,follow' | 'noindex,follow';
 }
 
 type PublicSeoCopy = Record<PublicPageId, Pick<SeoPage, 'title' | 'description' | 'pageType'>>;
-
-export const homeSeo: SeoPage = {
-  pageId: 'typingTest', language: 'en', path: '/', pageType: 'home',
-  title: 'TypeDash — Free English and French Typing Tests',
-  description: 'Practise typing in English or French with TypeDash. Measure speed and accuracy, review completed sessions, and learn techniques for confident typing.',
-};
 
 const copy: Record<Language, PublicSeoCopy> = {
   en: {
@@ -100,8 +94,8 @@ export function privateSeo(language: Language): SeoPage {
     path: PAGE_PATHS.progress,
     title: language === 'fr' ? 'Mes progrès de frappe | TypeDash' : 'My Typing Progress | TypeDash',
     description: language === 'fr'
-      ? 'Consultez les statistiques de frappe enregistrées pour cet appareil.'
-      : 'Review the typing statistics saved for this device.',
+      ? 'Consultez votre historique de frappe sur cet appareil : vitesse moyenne, record personnel, précision et détails des sessions terminées dans TypeDash.'
+      : 'Review your typing history on this device: average speed, personal best, accuracy and detailed results for completed practice sessions in TypeDash.',
     pageType: 'private',
     robots: 'noindex,follow',
   };

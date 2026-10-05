@@ -32,8 +32,7 @@ export class AppShell {
     effect(() => {
       const page = this.routeSeo();
       const language = this.preferences.language();
-      if (page) this.seo.apply(page.pageType === 'home' ? { ...page, language }
-        : page.pageId === 'progress' ? privateSeo(language) : publicSeo(page.pageId, language));
+      if (page) this.seo.apply(page.pageId === 'progress' ? privateSeo(language) : publicSeo(page.pageId, language));
     });
     afterNextRender(() => this.analytics.initialize());
     this.applyRouteContext();
@@ -51,8 +50,7 @@ export class AppShell {
 
     if (seoPage) {
       this.routeSeo.set(seoPage);
-      this.seo.apply(seoPage.pageType === 'home' ? { ...seoPage, language: this.preferences.language() }
-        : seoPage.pageId === 'progress' ? privateSeo(this.preferences.language())
+      this.seo.apply(seoPage.pageId === 'progress' ? privateSeo(this.preferences.language())
         : publicSeo(seoPage.pageId, this.preferences.language()));
       this.analytics.viewPage(seoPage.path, seoPage.title);
     }

@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /_pages/
 
 Sitemap: https://typedash.online/sitemap.xml

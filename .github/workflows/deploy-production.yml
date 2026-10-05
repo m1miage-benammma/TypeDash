@@ -46,7 +46,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           TYPEDASH_API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
-          TYPEDASH_SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
+          TYPEDASH_SITE_ORIGIN: https://typedash.online
           DEPLOY_PRODUCTION: ${{ inputs.deploy_production }}
         run: |
           python - <<'PY'
@@ -83,7 +83,7 @@ jobs:
         working-directory: frontend
         env:
           TYPEDASH_API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
-          TYPEDASH_SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
+          TYPEDASH_SITE_ORIGIN: https://typedash.online
         run: npm run build:netlify
 
       - name: Build backend production image
@@ -177,7 +177,7 @@ jobs:
       - name: Deployment summary
         env:
           RELEASE_COMMIT: ${{ github.sha }}
-          SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
+          SITE_ORIGIN: https://typedash.online
         run: |
           echo "### TypeDash published" >> "$GITHUB_STEP_SUMMARY"
           echo "Commit: $RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"

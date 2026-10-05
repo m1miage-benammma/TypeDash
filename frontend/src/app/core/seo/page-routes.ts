@@ -1,7 +1,7 @@
 export type PageId = 'typingTest' | 'typingSpeedGuide' | 'accuracyGuide' | 'wpmCalculator' | 'programmerTest' | 'progress';
 
 export const PAGE_PATHS: Record<PageId, string> = {
-  "typingTest": "/typing-test",
+  "typingTest": "/",
   "typingSpeedGuide": "/typing-speed-guide",
   "accuracyGuide": "/improve-typing-accuracy",
   "wpmCalculator": "/wpm-calculator",

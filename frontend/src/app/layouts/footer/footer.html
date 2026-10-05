@@ -5,10 +5,10 @@
     <a class="hover:text-[var(--accent)]" [routerLink]="routeFor('wpmCalculator')">{{ t('wpmCalculator') }}</a>
     <a class="hover:text-[var(--accent)]" [routerLink]="routeFor('programmerTest')">{{ t('programmerTypingTest') }}</a>
   </nav>
-  <button class="mb-4 text-[11px] underline underline-offset-4" type="button" (click)="analytics.openSettings()">{{ language() === 'fr' ? 'Préférences de confidentialité' : 'Privacy preferences' }}</button>
   <div class="flex items-center gap-[18px] max-[560px]:flex-wrap max-[560px]:gap-x-[15px] max-[560px]:gap-y-[9px]">
     <span class="text-[15px] font-semibold tracking-[-.7px] text-[var(--ink)]">typedash</span>
     <span>{{ t('footer') }}</span>
+    <button class="privacy-preferences text-[11px] underline underline-offset-4 hover:text-[var(--accent)]" type="button" (click)="analytics.openSettings()">{{ language() === 'fr' ? 'Préférences de confidentialité' : 'Privacy preferences' }}</button>
     <span class="ml-auto flex items-center gap-1.5 max-[560px]:ml-0"><td-icon name="shield" />{{ t('local') }}</span>
     <a class="inline-flex items-center gap-1.5 font-semibold text-[var(--ink)] hover:text-[var(--accent)] max-[560px]:w-full"
       href="https://github.com/m1miage-benammma/TypeDash" target="_blank" rel="noopener noreferrer"
