@@ -1,0 +1,9 @@
+<div class="input-surface">
+  <ng-content />
+  <textarea #keyboard class="native-keyboard" rows="1" [disabled]="!enabled()"
+    [attr.aria-label]="label()" [attr.lang]="language()" inputmode="text"
+    enterkeyhint="next" autocapitalize="off" autocorrect="off" autocomplete="off"
+    [spellcheck]="false" (click)="focus()" (input)="onInput($event)" (keydown)="keydown($event)"
+    (compositionstart)="compositionStart()" (compositionend)="compositionEnd()"
+    (paste)="blockPaste($event)" (drop)="blockPaste($event)"> </textarea>
+</div>

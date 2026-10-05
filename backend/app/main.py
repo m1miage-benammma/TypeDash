@@ -5,10 +5,6 @@ from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from app.api.routers.calculator import router as calculator_router
 
-from app.api.schemas.api import ApiResponse
-from app.api.schemas.health import RootResponse
-from app.services.system_service import SystemService
-
 from app.api.error_handlers import install_error_handlers
 from app.api.routers.devices import create_router as create_devices_router
 from app.api.routers.health import router as health_router
@@ -52,6 +48,9 @@ app = FastAPI(
     version="1.1.0",
     debug=settings.debug,
     lifespan=lifespan,
+    docs_url=None if settings.runtime_environment == "production" else "/docs",
+    redoc_url=None if settings.runtime_environment == "production" else "/redoc",
+    openapi_url=None if settings.runtime_environment == "production" else "/openapi.json",
 )
 install_error_handlers(app)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -69,9 +68,3 @@ app.include_router(calculator_router)
 app.include_router(health_router, prefix="/api")
 app.include_router(create_typing_router(typing_service))
 app.include_router(create_devices_router(device_service))
-
-
-@app.get("/", tags=["system"], response_model=ApiResponse[RootResponse])
-def read_root() -> ApiResponse[RootResponse]:
-    """Return a minimal API status response."""
-    return SystemService.root()

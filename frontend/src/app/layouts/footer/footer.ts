@@ -10,6 +10,7 @@ import { Icon } from '../../shared/components/icon/icon';
   selector: 'td-footer',
   imports: [RouterLink, Icon],
   templateUrl: './footer.html',
+  styleUrl: './footer.css',
   host: { class: 'block' },
 })
 export class Footer {

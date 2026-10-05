@@ -1,14 +1,8 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.models.enums import Difficulty, Language
-
-
-class UsernameRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    username: str
 
 
 class DeviceSummaryResponse(BaseModel):
@@ -16,14 +10,6 @@ class DeviceSummaryResponse(BaseModel):
     best_wpm: float
     average_wpm: float
     average_accuracy: float
-
-
-class DeviceRequest(BaseModel):
-    device_id: UUID
-
-
-class DeviceUsernameRequest(UsernameRequest):
-    device_id: UUID
 
 
 class DeviceStatResponse(BaseModel):
@@ -55,6 +41,7 @@ class DeviceProfileResponse(BaseModel):
     history_chart: list['DeviceChartPointResponse']
     requires_registration: bool
     can_change_username: bool
+
 
 class DeviceChartPointResponse(BaseModel):
     id: UUID

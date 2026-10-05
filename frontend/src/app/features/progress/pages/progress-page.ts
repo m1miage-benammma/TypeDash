@@ -9,9 +9,11 @@ import { I18nService } from '../../../core/services/i18n.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { ConfirmationModal } from '../../../shared/components/confirmation-modal/confirmation-modal';
 
+import { RevealDirective } from '../../../shared/directives/reveal.directive';
+
 @Component({
   selector: 'td-progress-page',
-  imports: [DatePipe, DecimalPipe, RouterLink, Icon, ConfirmationModal],
+  imports: [RevealDirective, DatePipe, DecimalPipe, RouterLink, Icon, ConfirmationModal],
   templateUrl: './progress-page.html',
   host: { class: 'block' },
 })

@@ -7,9 +7,11 @@ import { Language } from '../../../../core/models/language';
 import { CONTENT_PAGES } from '../../data/content-pages';
 import { ContentPageId } from '../../models/content-page';
 
+import { RevealDirective } from '../../../../shared/directives/reveal.directive';
+
 @Component({
   selector: 'td-content-article',
-  imports: [RouterLink],
+  imports: [RevealDirective, RouterLink],
   templateUrl: './content-article.html',
   host: { class: 'block' },
 })

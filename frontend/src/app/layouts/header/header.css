@@ -1,5 +1,20 @@
 :host { display: block; }
 
+.site-header { height: 88px; }
+.nav-link { transition: color .18s ease; }
+
+
+/* Switch before the centered links collide with a long username or translation. */
+@media (max-width: 1000px) {
+  :host .site-header { height: auto; flex-wrap: wrap; justify-content: space-between; padding: 18px 0; }
+  :host .primary-nav {
+    position: static; order: 3; width: 100%; height: 46px; margin-top: 4px;
+    transform: none; translate: none; justify-content: center; gap: 28px;
+  }
+  :host .desktop-settings { display: none; }
+  :host .mobile-settings { display: block; }
+}
+
 .nav-link:hover,
 .nav-link.active { color: var(--brand-text); }
 

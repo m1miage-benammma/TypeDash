@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
-from app.api.schemas.api import ApiResponse
-from app.api.schemas.calculator import CalculatorRequest, CalculatorResponse
+from app.api.responses.api import ApiResponse
+from app.api.requests.calculator import CalculatorRequest
+from app.api.responses.calculator import CalculatorResponse
 from app.services.calculator_service import CalculatorService
 
 router = APIRouter(prefix="/api/calculator", tags=["calculator"])

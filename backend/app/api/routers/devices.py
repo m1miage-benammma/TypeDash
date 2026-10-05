@@ -2,8 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.schemas.api import ApiResponse
-from app.api.schemas.device import DeviceRequest, DeviceUsernameRequest, DeviceProfileResponse
+from app.api.responses.api import ApiResponse
+from app.api.requests.device import DeviceRequest, DeviceUsernameRequest
+from app.api.responses.device import DeviceProfileResponse
 from app.dependencies import get_device_request, get_username_request
 from app.services.device_service import DeviceService
 

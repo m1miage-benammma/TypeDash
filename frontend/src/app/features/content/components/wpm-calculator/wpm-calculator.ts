@@ -4,7 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, debounceTime, EMPTY, Subject, switchMap } from 'rxjs';
 
 import { I18nService } from '../../../../core/services/i18n.service';
-import { CalculatorRequest, CalculatorResult } from '../../models/calculator';
+import { CalculatorRequest } from '../../requests/calculator.request';
+import { CalculatorResult } from '../../responses/calculator.response';
 import { CalculatorApiService } from '../../services/calculator-api.service';
 
 @Component({

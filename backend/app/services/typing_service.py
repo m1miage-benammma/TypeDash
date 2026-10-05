@@ -1,12 +1,9 @@
 from datetime import timedelta
 from uuid import uuid4
 
-from app.api.schemas.api import ApiResponse
-from app.api.schemas.typing import (
-    CreateTypingTestRequest, GetTypingTestRequest,
-    UpdateTypingTestRequest, UpdateTypingInputRequest, TypingTestResponse,
-    UpdateTypingBatchRequest,
-)
+from app.api.responses.api import ApiResponse
+from app.api.requests.typing import CreateTypingTestRequest, GetTypingTestRequest
+from app.api.responses.typing import TypingTestResponse
 from app.models.errors import TypingTestError
 from app.services.device_service import DeviceService
 
@@ -19,7 +16,6 @@ from app.repositories.memory_typing_test_repository import MemoryTypingTestRepos
 from app.repositories.typing_test_repository import PostgresTypingTestRepository
 from app.services.prompt_service import PromptService
 from app.services.typing_engine import elapsed, snapshot, update_test
-from app.services.typing_input import apply_input
 from app.services.typing_view import typing_view
 
 TypingTestRepository = MemoryTypingTestRepository | PostgresTypingTestRepository
@@ -36,6 +32,7 @@ class TypingService:
         self.test_repository = test_repository
         self.device_repository = device_repository
         self.prompts = prompts
+        self.live_tests: dict[str, TypingTest | None] = {}
 
     def prepare(self, request: CreateTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         now = utc_now()
@@ -58,6 +55,9 @@ class TypingService:
 
     def get(self, request: GetTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         now = utc_now()
+        live = self.live_tests.get(str(request.test_id))
+        if live is not None:
+            return self._response(live, now, request.word_by_word)
         with self.test_repository.transaction() as storage:
             test = self._require_test(storage, str(request.test_id))
             update_test(test, test.typed, test.revision, elapsed(test, now) >= test.duration, now)
@@ -65,40 +65,6 @@ class TypingService:
         if request.device_id:
             self._record_result(test, str(request.device_id), now.isoformat())
         return self._response(test, now, request.word_by_word)
-
-    def input(self, request: UpdateTypingInputRequest) -> ApiResponse[TypingTestResponse]:
-        now = utc_now()
-        with self.test_repository.transaction() as storage:
-            test = self._require_test(storage, str(request.test_id))
-            apply_input(test, request.key, request.sequence, request.word_by_word, now)
-            storage.save(test)
-        self._record_result(test, str(request.device_id), now.isoformat())
-        return self._response(test, now, request.word_by_word)
-
-    def progress(self, request: UpdateTypingTestRequest) -> ApiResponse[TypingTestResponse]:
-        return self._update(request, finish=False)
-
-    def input_batch(self, request: UpdateTypingBatchRequest) -> ApiResponse[TypingTestResponse]:
-        now = utc_now()
-        with self.test_repository.transaction() as storage:
-            test = self._require_test(storage, str(request.test_id))
-            for entry in request.inputs:
-                apply_input(test, entry.key, entry.sequence, entry.word_by_word, now)
-            storage.save(test)
-        self._record_result(test, str(request.device_id), now.isoformat())
-        return self._response(test, now, request.inputs[-1].word_by_word)
-
-    def finish(self, request: UpdateTypingTestRequest) -> ApiResponse[TypingTestResponse]:
-        return self._update(request, finish=True)
-
-    def _update(self, request: UpdateTypingTestRequest, finish: bool) -> ApiResponse[TypingTestResponse]:
-        now = utc_now()
-        with self.test_repository.transaction() as storage:
-            test = self._require_test(storage, str(request.test_id))
-            update_test(test, request.typed, request.revision, finish, now)
-            storage.save(test)
-        self._record_result(test, str(request.device_id), now.isoformat())
-        return self._response(test, now)
 
     @staticmethod
     def _require_test(storage, test_id: str) -> TypingTest:
@@ -108,10 +74,10 @@ class TypingService:
         return test
 
     @staticmethod
-    def _response(test: TypingTest, now, word_by_word: bool = False) -> ApiResponse[TypingTestResponse]:
+    def _response(test: TypingTest, now, word_by_word: bool = False, *, include_words: bool = True) -> ApiResponse[TypingTestResponse]:
         return ApiResponse[TypingTestResponse](
             data=TypingTestResponse.model_validate({
-                **snapshot(test, now), "view": typing_view(test, now, word_by_word),
+                **snapshot(test, now), "view": typing_view(test, word_by_word, include_words=include_words),
             }),
         )
 

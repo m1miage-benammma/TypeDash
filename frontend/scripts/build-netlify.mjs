@@ -24,6 +24,7 @@ if (apiOrigin === siteOrigin) throw new Error('API origin must point to the sepa
 const result = spawnSync(process.execPath, [
   resolve(frontend, 'node_modules/@angular/cli/bin/ng.js'),
   'build', '--define', `TYPEDASH_SITE_ORIGIN=${JSON.stringify(siteOrigin)}`,
+  '--define', `TYPEDASH_API_ORIGIN=${JSON.stringify(apiOrigin)}`,
 ], { cwd: frontend, stdio: 'inherit' });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);

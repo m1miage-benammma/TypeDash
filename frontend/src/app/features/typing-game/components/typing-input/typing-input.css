@@ -1,0 +1,8 @@
+.input-surface { position: relative; border-radius: 6px; }
+.native-keyboard {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0; resize: none; outline: none;
+  opacity: .01; background: transparent; color: transparent;
+  caret-color: transparent; font-size: 16px; cursor: text;
+}
+.native-keyboard:disabled { pointer-events: none; }

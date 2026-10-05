@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api.schemas.api import ApiErrorDetail, ApiErrorResponse
+from app.api.responses.api import ApiErrorDetail, ApiErrorResponse
 from app.models.errors import IdentityError, TypingTestError
 
 

@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable, signal } from '@angular/core';
 import { Language } from '../models/language';
-import { TestOptions } from '../../features/typing-game/models/typing-test';
+import { TestOptions } from '../../features/typing-game/models/test-options';
 
 export function readLocal<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }

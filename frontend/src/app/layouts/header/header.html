@@ -1,18 +1,18 @@
-<header class="relative flex h-[98px] items-center gap-8 border-b border-[var(--line)] max-[800px]:gap-5 max-[560px]:h-auto max-[560px]:flex-wrap max-[560px]:justify-between max-[560px]:py-[18px]">
+<header class="site-header relative flex h-[98px] items-center gap-8 border-b border-[var(--line)] max-[800px]:gap-5 max-[560px]:h-auto max-[560px]:flex-wrap max-[560px]:justify-between max-[560px]:py-[18px]">
   <a class="inline-flex items-center text-[28px] font-bold tracking-[-1.3px] max-[560px]:text-[23px]" [routerLink]="routeFor('typingTest')" aria-label="TypeDash">
     <img class="mr-3 size-9 rounded-[10px] max-[560px]:mr-2 max-[560px]:size-8"
       [src]="preferences.dark() ? '/typedash-logo-dark.svg' : '/typedash-logo.svg'" alt="" />
     <span>type</span><span class="font-normal">dash</span>
   </a>
 
-  <nav class="absolute left-1/2 flex h-full -translate-x-1/2 items-stretch gap-[31px] max-[800px]:gap-5 max-[560px]:static max-[560px]:order-3 max-[560px]:mt-1 max-[560px]:h-[46px] max-[560px]:w-full max-[560px]:translate-x-0 max-[560px]:justify-center max-[560px]:gap-7" aria-label="Main">
+  <nav class="primary-nav absolute left-1/2 flex h-full -translate-x-1/2 items-stretch gap-[31px] max-[800px]:gap-5 max-[560px]:static max-[560px]:order-3 max-[560px]:mt-1 max-[560px]:h-[46px] max-[560px]:w-full max-[560px]:translate-x-0 max-[560px]:justify-center max-[560px]:gap-7" aria-label="Main">
     <a class="nav-link relative grid place-items-center px-0.5 text-[13px] font-semibold whitespace-nowrap text-[var(--muted)] max-[560px]:text-xs"
       [routerLink]="routeFor('typingTest')" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ t('practice') }}</a>
     <a class="nav-link relative grid place-items-center px-0.5 text-[13px] font-semibold whitespace-nowrap text-[var(--muted)] max-[560px]:text-xs"
       [routerLink]="routeFor('progress')" routerLinkActive="active">{{ t('progress') }}</a>
   </nav>
 
-  <div class="ml-auto flex items-center gap-3.5 max-[560px]:hidden">
+  <div class="desktop-settings ml-auto flex items-center gap-3.5 max-[560px]:hidden">
     @if (identity.profile()?.username; as username) {
       <button class="max-w-[150px] overflow-hidden rounded-full border border-[var(--line)] bg-[var(--brand-tint)] px-2.5 py-[7px] text-[11px] font-bold text-ellipsis whitespace-nowrap text-[var(--brand-text)] transition hover:border-[var(--accent)] hover:shadow-[inset_0_-2px_0_var(--accent)] max-[560px]:max-w-[90px] max-[560px]:px-2 max-[560px]:py-1.5"
         type="button" (click)="openUsernameModal()" [attr.aria-label]="t('editUsername')"
@@ -36,7 +36,7 @@
 
   </div>
 
-  <div #mobileMenuRoot class="relative ml-auto hidden max-[560px]:block">
+  <div #mobileMenuRoot class="mobile-settings relative ml-auto hidden max-[560px]:block">
     <button class="inline-flex size-[36px] items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-xl text-[var(--ink)]"
       type="button" (click)="toggleMobileMenu()" [attr.aria-expanded]="mobileMenuOpen()"
       aria-controls="mobile-settings" [attr.aria-label]="t(mobileMenuOpen() ? 'closeMenu' : 'openMenu')">

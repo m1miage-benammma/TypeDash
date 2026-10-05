@@ -1,12 +1,13 @@
-import { PromptWord, TypingInput, TypingTest } from '../../models/typing-test';
+import { PromptWord, TypingTest } from '../../responses/typing-test.response';
+import { TypingInput } from '../../models/typing-input';
 
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const characters = (value: string): string[] =>
   Array.from(segmenter.segment(value.normalize('NFC')), part => part.segment);
 
 // Presentation-only prediction. Never used for scores, persistence or validation.
-export function previewWords(test: TypingTest, pending: TypingInput[], singleLine: boolean): PromptWord[] {
-  if (!pending.length) return test.view.words;
+export function previewWords(test: TypingTest, pending: TypingInput[], singleLine: boolean, renderSnapshot = false): PromptWord[] {
+  if (!pending.length && !renderSnapshot) return test.view.words;
   const expected = characters(test.text);
   let actual = characters(test.typed);
   let autoSeparator = test.auto_inserted_separator ?? false;

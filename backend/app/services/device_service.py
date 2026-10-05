@@ -1,10 +1,10 @@
 import re
 from dataclasses import replace
-from statistics import mean
 from uuid import uuid4
 
-from app.api.schemas.api import ApiResponse
-from app.api.schemas.device import DeviceRequest, DeviceUsernameRequest, DeviceProfileResponse
+from app.api.responses.api import ApiResponse
+from app.api.requests.device import DeviceRequest, DeviceUsernameRequest
+from app.api.responses.device import DeviceProfileResponse
 from app.core.clock import utc_now
 from app.models.constants import MAX_USERNAME_CHANGES, USERNAME_PATTERN_TEXT
 from app.models.device import Device
@@ -110,8 +110,8 @@ class DeviceService:
         profile = DeviceProfile(
             device=device, user=user, stats=stats[:30], total_sessions=len(stats),
             best_wpm=max(speeds, default=0),
-            average_wpm=mean(speeds) if speeds else 0,
-            average_accuracy=mean(accuracies) if accuracies else 0,
+            average_wpm=sum(speeds) / len(speeds) if speeds else 0,
+            average_accuracy=sum(accuracies) / len(accuracies) if accuracies else 0,
         )
         return ApiResponse[DeviceProfileResponse](
             data=DeviceProfileResponse.model_validate(self._profile_view(profile)),

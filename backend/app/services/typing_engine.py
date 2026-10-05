@@ -49,7 +49,8 @@ def score(test: TypingTest, now: datetime) -> dict:
     active_time = elapsed(test, now)
     completed_words = _count_completed_words(expected, actual, test.text)
     return {
-        "wpm": round(correct / 5 * 60 / active_time, 1) if active_time >= 1 else 0.0,
+        # Scores are calculated on the server and published only at session end.
+        "wpm": round(correct / 5 * 60 / max(1.0, active_time), 1) if actual else 0.0,
         "accuracy": round(correct / len(actual) * 100, 1) if actual else 0.0,
         "correct_characters": correct,
         "incorrect_characters": len(actual) - correct,
@@ -107,8 +108,6 @@ def snapshot(test: TypingTest, now: datetime) -> dict:
         "observed_at": now.isoformat(),
         "remaining_seconds": round(max(0.0, test.duration - elapsed(test, now)), 3),
         "pause_after_seconds": round(idle_remaining(test, now), 3),
-        "idle_timeout_seconds": IDLE_SECONDS,
-        "metrics": test.result or score(test, now),
     }
 
 

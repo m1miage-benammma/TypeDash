@@ -3,8 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable, timeout } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { ApiResponse } from '../../../core/models/api-response';
-import { CalculatorRequest, CalculatorResult } from '../models/calculator';
+import { ApiResponse } from '../../../core/responses/api.response';
+import { CalculatorRequest } from '../requests/calculator.request';
+import { CalculatorResult } from '../responses/calculator.response';
 
 @Injectable({ providedIn: 'root' })
 export class CalculatorApiService {

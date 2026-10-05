@@ -1,14 +1,4 @@
-import { Language } from '../../../core/models/language';
-
-export type Difficulty = 'easy' | 'medium' | 'hard';
-
-export interface TestOptions {
-  punctuation: boolean;
-  numbers: boolean;
-  difficulty: Difficulty;
-  language: Language;
-  duration: number;
-}
+import { TestOptions } from '../models/test-options';
 
 export interface Metrics {
   wpm: number;
@@ -35,18 +25,10 @@ export interface TypingTest extends TestOptions {
   observed_at: string;
   remaining_seconds: number;
   pause_after_seconds: number;
-  idle_timeout_seconds: number;
-  metrics: Metrics;
   result: TestResult | null;
   view: TypingView;
   auto_inserted_separator?: boolean;
   input_word_by_word?: boolean;
-}
-
-export interface TypingInput {
-  key: string;
-  sequence: number;
-  wordByWord: boolean;
 }
 
 export interface PromptWord {
@@ -59,18 +41,10 @@ export interface PromptWord {
 
 export interface TypingView {
   words: PromptWord[];
-  clock: string;
-  elapsed_percent: number;
   active: boolean;
   can_type: boolean;
   can_configure: boolean;
-  urgent: boolean;
   custom_duration: boolean;
   durations: number[];
   result_chart: { second: number; wpm: number; height_percent: number }[];
 }
-
-export type PrepareTestRequest = Partial<Omit<TestOptions, 'duration'>> & {
-  duration?: number | string;
-  word_by_word?: boolean;
-};

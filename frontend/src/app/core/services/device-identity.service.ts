@@ -3,8 +3,10 @@ import { inject, Injectable, signal } from '@angular/core';
 import { catchError, finalize, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { ApiResponse } from '../models/api-response';
-import { DeviceProfile } from '../models/device-profile';
+import { ApiResponse } from '../responses/api.response';
+import { DeviceProfile } from '../responses/device-profile.response';
+
+import { UsernameRequest } from '../requests/username.request';
 
 const DEVICE_ID_KEY = 'typedash.device-id';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -68,7 +70,7 @@ export class DeviceIdentityService {
     const deviceId = this.ensureDeviceId();
     return this.unwrap(this.http.put<ApiResponse<DeviceProfile>>(
       `${this.url}/${deviceId}/registration`,
-      { username },
+      { username } satisfies UsernameRequest,
     )).pipe(tap(profile => this.profileState.set(profile)));
   }
 
@@ -77,7 +79,7 @@ export class DeviceIdentityService {
     if (!deviceId) return throwError(() => new Error('Device identifier is unavailable.'));
     return this.unwrap(this.http.patch<ApiResponse<DeviceProfile>>(
       `${this.url}/${deviceId}/username`,
-      { username },
+      { username } satisfies UsernameRequest,
     )).pipe(tap(profile => this.profileState.set(profile)));
   }
 

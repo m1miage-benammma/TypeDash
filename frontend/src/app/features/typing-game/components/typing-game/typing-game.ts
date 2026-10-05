@@ -2,7 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, ElementRef, inject, signal, untracked, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { EMPTY, Subject, catchError, exhaustMap, finalize, interval, switchMap, takeUntil, tap } from 'rxjs';
+import { EMPTY, Subject, catchError, finalize, interval, switchMap, tap } from 'rxjs';
 
 import { I18nService } from '../../../../core/services/i18n.service';
 import { DeviceIdentityService } from '../../../../core/services/device-identity.service';
@@ -10,20 +10,18 @@ import { PreferencesService, writeLocal } from '../../../../core/services/prefer
 import { RegistrationModal } from '../../../identity/components/registration-modal/registration-modal';
 import { ConfirmationModal } from '../../../../shared/components/confirmation-modal/confirmation-modal';
 import { Icon } from '../../../../shared/components/icon/icon';
-import { Difficulty, PrepareTestRequest, TypingTest } from '../../models/typing-test';
+import { Difficulty } from '../../models/test-options';
+import { PrepareTestRequest } from '../../requests/typing-test.request';
+import { TypingTest } from '../../responses/typing-test.response';
 import { TypingApiService } from '../../services/typing-api.service';
+import { TypingInputComponent } from '../typing-input/typing-input';
+import { TypingInput } from '../../models/typing-input';
 import { previewWords } from './typing-preview';
-
-interface InputMessage {
-  testId: string;
-  key: string;
-  sequence: number;
-  wordByWord: boolean;
-}
+import { TypingConnection, TypingStreamService } from '../../services/typing-stream.service';
 
 @Component({
   selector: 'td-typing-game',
-  imports: [DecimalPipe, Icon, RegistrationModal, ConfirmationModal],
+  imports: [DecimalPipe, Icon, RegistrationModal, ConfirmationModal, TypingInputComponent],
   templateUrl: './typing-game.html',
   styleUrl: './typing-game.css',
 })
@@ -32,20 +30,19 @@ export class TypingGame {
   readonly preferences = inject(PreferencesService);
   readonly identity = inject(DeviceIdentityService);
   private readonly api = inject(TypingApiService);
+  private readonly stream = inject(TypingStreamService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly viewport = window.matchMedia('(max-width: 560px)');
 
   @ViewChild('customInput') customInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(TypingInputComponent) keyboard?: TypingInputComponent;
   @ViewChild('passage') passage?: ElementRef<HTMLElement>;
 
   readonly t = this.i18n.t.bind(this.i18n);
   readonly test = signal<TypingTest | null>(null);
   readonly options = computed(() => this.test());
-  readonly metrics = computed(() => this.test()?.metrics);
   readonly loading = signal(true);
-  readonly finishing = signal(false);
   readonly loadError = signal(false);
-  readonly saveError = signal(false);
   readonly offline = signal(false);
   readonly pasteHint = signal(false);
   readonly restartModal = signal(false);
@@ -55,33 +52,52 @@ export class TypingGame {
   readonly registrationModal = signal(false);
   readonly isMobile = signal(this.viewport.matches);
   readonly durations = computed(() => this.test()?.view.durations ?? []);
-  readonly entries = computed(() => this.identity.profile()?.stats ?? []);
   readonly best = computed(() => this.identity.profile()?.summary.best_wpm ?? 0);
-  readonly averageWpm = computed(() => this.identity.profile()?.summary.average_wpm ?? 0);
-  readonly averageAccuracy = computed(() => this.identity.profile()?.summary.average_accuracy ?? 0);
   readonly engaged = computed(() => (this.test()?.view.active ?? false) || this.pendingInputs().length > 0);
   readonly running = computed(() => this.test()?.status === 'running');
-  readonly locked = computed(() => this.loading() || this.saveError() || this.pendingInputs().length > 0 || this.test()?.view.can_configure === false);
+  readonly locked = computed(() => this.loading() || this.pendingInputs().length > 0 || this.test()?.view.can_configure === false);
   readonly result = computed(() => this.test()?.result ?? null);
   readonly canType = computed(() => this.test()?.view.can_type === true
-    && !this.loading() && !this.loadError() && !this.saveError()
-    && !this.finishing()
+    && !this.loading() && !this.loadError()
     && !this.restartModal() && !this.registrationModal());
   readonly customSelected = computed(() => this.test()?.view.custom_duration ?? false);
   readonly singleLineMode = computed(() => this.isMobile() || this.preferences.singleLine());
-  readonly clock = computed(() => this.test()?.view.clock ?? '—');
-  readonly elapsedPercent = computed(() => this.test()?.view.elapsed_percent ?? 0);
-  readonly visibleWords = computed(() => {
+  private readonly displayNow = signal(performance.now());
+  private readonly receivedAt = signal(performance.now());
+  // Display interpolation only; never calculate scores or finish a test locally.
+  private readonly displayedRemaining = computed(() => {
     const test = this.test();
-    return test ? previewWords(test, this.pendingInputs(), this.singleLineMode()) : [];
+    if (!test) return 0;
+    const since = Math.max(0, (this.displayNow() - this.receivedAt()) / 1000);
+    const advance = test.status === 'running' && !this.offline()
+      ? Math.min(since, test.pause_after_seconds) : 0;
+    return Math.max(0, test.remaining_seconds - advance);
+  });
+  readonly clock = computed(() => {
+    if (!this.test()) return '—';
+    const seconds = Math.ceil(this.displayedRemaining());
+    return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  });
+  readonly elapsedPercent = computed(() => {
+    const test = this.test();
+    return test ? (1 - this.displayedRemaining() / test.duration) * 100 : 0;
+  });
+  private readonly passageSnapshot = computed(() => this.test(), {
+    equal: (previous, next) => previous?.id === next?.id && previous?.typed === next?.typed
+      && previous?.auto_inserted_separator === next?.auto_inserted_separator
+      && previous?.input_word_by_word === next?.input_word_by_word,
+  });
+  readonly visibleWords = computed(() => {
+    const test = this.passageSnapshot();
+    return test ? previewWords(test, this.pendingInputs(), this.singleLineMode(), true) : [];
   });
   readonly resultChart = computed(() => this.test()?.view.result_chart ?? []);
 
   private readonly prepareRequests = new Subject<PrepareTestRequest>();
-  private readonly pendingInputs = signal<InputMessage[]>([]);
-  private readonly stopRequests = new Subject<void>();
+  private readonly pendingInputs = signal<TypingInput[]>([]);
+  private connection: TypingConnection | null = null;
+  private sentSequence = -1;
   private sequence = -1;
-  private failedBatch: InputMessage[] | null = null;
 
   constructor() {
     this.prepareRequests.pipe(
@@ -89,17 +105,18 @@ export class TypingGame {
         this.loading.set(true);
         this.loadError.set(false);
         this.durationError.set(null);
-        this.stopRequests.next();
+        this.connection?.close();
+        this.connection = null;
         this.pendingInputs.set([]);
         return this.api.prepare(options).pipe(
           tap(test => {
             this.sequence = test.revision;
-            this.failedBatch = null;
-            this.saveError.set(false);
             this.offline.set(false);
             this.pasteHint.set(false);
             this.customOpen.set(false);
             this.test.set(test);
+            this.receivedAt.set(performance.now());
+            this.connectStream(test);
             this.remember(test.id);
             writeLocal('typedash.options', this.requestOptions());
           }),
@@ -112,42 +129,25 @@ export class TypingGame {
           }),
           finalize(() => {
             this.loading.set(false);
-            this.focusInput();
+            if (!this.isMobile()) setTimeout(() => this.focusInput());
           }),
         );
       }),
       takeUntilDestroyed(),
     ).subscribe();
 
-    interval(40).pipe(
-      exhaustMap(() => {
-        const batch = this.pendingInputs().slice(0, 256);
-        if (!batch.length || this.loading() || this.saveError()) return EMPTY;
-        return this.sendInputs(batch).pipe(takeUntil(this.stopRequests));
-      }),
-      takeUntilDestroyed(),
-    ).subscribe();
-
-    interval(250).pipe(
-      exhaustMap(() => {
-        const test = this.test();
-        if (!test || test.status !== 'running' || this.loading() || this.saveError() || this.pendingInputs().length) return EMPTY;
-        return this.api.get(test.id, this.identity.deviceId(), this.singleLineMode()).pipe(
-          takeUntil(this.stopRequests),
-          tap(response => this.accept(response)),
-          catchError(() => { this.offline.set(true); return EMPTY; }),
-        );
-      }),
-      takeUntilDestroyed(),
-    ).subscribe();
+    interval(30).pipe(takeUntilDestroyed()).subscribe(() => {
+      this.displayNow.set(performance.now());
+      this.flushInputs();
+    });
 
     const viewportChanged = (event: MediaQueryListEvent): void => {
       this.isMobile.set(event.matches);
-      this.refreshView();
+      setTimeout(() => this.scrollCaret());
     };
     this.viewport.addEventListener('change', viewportChanged);
     this.destroyRef.onDestroy(() => {
-      this.stopRequests.next();
+      this.connection?.close();
       this.viewport.removeEventListener('change', viewportChanged);
     });
 
@@ -210,51 +210,34 @@ export class TypingGame {
 
   setLineMode(singleLine: boolean): void {
     this.preferences.setLineMode(singleLine);
-    this.refreshView();
     this.focusInput();
   }
 
-  private refreshView(): void {
-    const test = this.test();
-    if (!test || this.loading()) return;
-    this.api.get(test.id, this.identity.deviceId(), this.singleLineMode()).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({ next: response => this.accept(response), error: () => this.offline.set(true) });
-  }
-
-  onKeydown(event: KeyboardEvent): void {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
-      this.preventPaste(event);
-      return;
-    }
-    if (event.ctrlKey || event.metaKey || event.isComposing || event.key === 'Tab') return;
-    event.preventDefault();
-    const test = this.test();
-    if (!test || !this.canType()) return;
+  queueKeys(keys: string[]): void {
+    if (!this.test() || !this.canType()) return;
     this.identity.ensureDeviceId();
-    this.pendingInputs.update(pending => [...pending, {
-      testId: test.id, key: event.key, sequence: ++this.sequence,
-      wordByWord: this.singleLineMode(),
-    }]);
-    this.scrollCaret();
+    this.pendingInputs.update(pending => [...pending, ...keys.map(key => ({
+      key, sequence: ++this.sequence, wordByWord: this.singleLineMode(),
+    }))]);
+    this.flushInputs();
+    setTimeout(() => this.scrollCaret());
   }
 
-  private sendInputs(batch: InputMessage[]) {
-    return this.api.inputs(
-      batch[0].testId, this.identity.ensureDeviceId(), batch,
-    ).pipe(
-      tap(test => {
-        this.failedBatch = null;
-        this.accept(test);
-      }),
-      catchError(() => {
-        if (batch[0].testId === this.test()?.id) {
-          this.failedBatch = batch;
-          this.saveError.set(true);
-        }
-        return EMPTY;
-      }),
-    );
+  private flushInputs(): void {
+    const batch = this.pendingInputs().filter(input => input.sequence > this.sentSequence).slice(0, 256);
+    if (batch.length && this.connection?.send(batch)) this.sentSequence = batch[batch.length - 1].sequence;
+  }
+
+  private connectStream(test: TypingTest): void {
+    this.connection?.close();
+    if (test.result) return;
+    this.sentSequence = test.revision;
+    this.connection = this.stream.connect(test.id, this.identity.ensureDeviceId(), this.singleLineMode(),
+      response => this.accept(response), ready => {
+        this.offline.set(!ready);
+        // Replay unacknowledged sequences after reconnect; backend deduplicates.
+        if (ready) this.sentSequence = this.test()?.revision ?? -1;
+      });
   }
 
   private accept(test: TypingTest): void {
@@ -264,9 +247,15 @@ export class TypingGame {
     if (test.revision === current.revision && test.observed_at < current.observed_at) return;
     const previouslyFinished = !!current.result;
     this.test.set(test);
-    this.pendingInputs.update(pending => test.result ? [] : pending.filter(input => input.sequence > test.revision));
+    this.receivedAt.set(performance.now());
+    this.pendingInputs.update(pending => {
+      if (!pending.length) return pending;
+      if (test.result) return [];
+      const remaining = pending.filter(input => input.sequence > test.revision);
+      return remaining.length === pending.length ? pending : remaining;
+    });
     this.offline.set(false);
-    setTimeout(() => this.scrollCaret());
+    if (test.typed !== current.typed) setTimeout(() => this.scrollCaret());
     if (test.result && !previouslyFinished) {
       this.clearActive();
       this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -275,10 +264,7 @@ export class TypingGame {
     }
   }
 
-  preventPaste(event: Event): void {
-    event.preventDefault();
-    this.pasteHint.set(true);
-  }
+  showPasteHint(): void { this.pasteHint.set(true); }
 
   private scrollCaret(): void {
     const box = this.passage?.nativeElement;
@@ -292,27 +278,11 @@ export class TypingGame {
     }
   }
 
-  focusInput(): void { setTimeout(() => this.passage?.nativeElement.focus()); }
+  focusInput(): void { this.keyboard?.focus(); }
 
   confirmRestart(): void {
     this.restartModal.set(false);
-    this.saveError.set(false);
     this.prepare();
-  }
-
-  finish(): void {
-    if (!this.failedBatch || this.finishing()) return;
-    this.finishing.set(true);
-    // Retry the same transport sequence; the backend handles idempotency.
-    this.sendInputs(this.failedBatch).pipe(
-      takeUntilDestroyed(this.destroyRef),
-      tap(() => this.saveError.set(false)),
-      finalize(() => {
-        this.finishing.set(false);
-        this.sequence = Math.max(this.sequence, this.test()?.revision ?? -1);
-        this.focusInput();
-      }),
-    ).subscribe();
   }
 
   private remember(id: string): void {
@@ -338,6 +308,8 @@ export class TypingGame {
       next: test => {
         this.sequence = test.revision;
         this.test.set(test);
+        this.receivedAt.set(performance.now());
+        this.connectStream(test);
         this.loading.set(false);
         if (test.result) {
           this.clearActive();
@@ -345,7 +317,7 @@ export class TypingGame {
             error: () => this.offline.set(true),
           });
         }
-        this.focusInput();
+        if (!this.isMobile()) setTimeout(() => this.focusInput());
       },
       error: () => { this.clearActive(); this.prepare(); },
     });

@@ -15,8 +15,8 @@
     <div class="best-icon"><td-icon name="trophy" /></div>
     <div>
       <span class="small-label">{{ t('personalBest') }}</span>
-      @if (entries().length) {
-        <div class="best-value">{{ best() | number:'1.0-0' }} <span>WPM</span></div>
+      @if ((identity.profile()?.summary?.sessions ?? 0) > 0) {
+        <div class="best-value">{{ best() | number:'1.1-1' }} <span>WPM</span></div>
       } @else {
         <p class="best-empty">{{ t('noBest') }}</p>
       }
@@ -82,7 +82,7 @@
         <span class="result-stamp"><td-icon name="check" /></span>
       </div>
       <div class="result-main">
-        <div><strong>{{ result.wpm | number:'1.0-1' }}</strong><span>{{ t('wpm') }}</span></div>
+        <div><strong>{{ result.wpm | number:'1.1-1' }}</strong><span>{{ t('wpm') }}</span></div>
         <div><strong>{{ result.accuracy | number:'1.0-1' }}<small>%</small></strong><span>{{ t('accuracy') }}</span></div>
       </div>
       <div class="result-details">
@@ -98,7 +98,7 @@
               <div [style.height.%]="sample.height_percent"></div>
             }
           </div>
-          <div class="chart-caption"><span>0s</span><span>{{ t('resultChart') }}</span><span>{{ result.elapsed_seconds | number:'1.0-0' }}s</span></div>
+          <div class="chart-caption"><span>0s</span><span>{{ t('resultChart') }}</span><span>{{ result.elapsed_seconds | number:'1.1-1' }}s</span></div>
         </div>
       }
       <div class="results-foot">
@@ -127,11 +127,10 @@
           <button class="secondary-button" (click)="prepare()">{{ t('retry') }} <td-icon name="reset" /></button>
         </div>
       } @else {
+        <td-typing-input [enabled]="canType()" [label]="t('inputLabel')" [language]="options()?.language ?? 'en'"
+          (keys)="queueKeys($event)" (pasteBlocked)="showPasteHint()">
         <div #passage class="passage" [class.word-by-word]="singleLineMode()" [class.active-passage]="engaged()"
-          role="textbox" [attr.aria-label]="t('inputLabel')" aria-multiline="false"
-          [attr.aria-disabled]="!canType()" [attr.tabindex]="canType() ? 0 : -1"
-          [attr.lang]="options()?.language" (click)="focusInput()" (keydown)="onKeydown($event)"
-          (paste)="preventPaste($event)" (drop)="preventPaste($event)" dir="ltr">
+          aria-hidden="true" dir="ltr">
           @for (word of visibleWords(); track word.index) {
             <span class="word">
               @for (char of word.chars; track char.index) {
@@ -143,6 +142,7 @@
             </span>
           }
         </div>
+        </td-typing-input>
       }
 
       <div class="passage-footer">
@@ -158,35 +158,11 @@
           <td-icon name="clock" />
           <span>{{ t(engaged() ? (running() ? 'runningHint' : 'pausedHint') : 'readyHint') }}</span>
         </div>
-        @if (finishing()) {
-          <span class="saving" role="status"><span class="spinner"></span>{{ t('saving') }}</span>
-        } @else if (saveError()) {
-          <button class="secondary-button" (click)="restartModal.set(true)">{{ t('restart') }}</button>
-          <button class="primary-button" (click)="finish()">{{ t('retryResult') }} <td-icon name="reset" /></button>
-        } @else if (engaged()) {
+        @if (engaged()) {
           <button class="secondary-button" (click)="restartModal.set(true)">{{ t('restart') }} <td-icon name="reset" /></button>
         }
       </div>
-      @if (saveError()) { <p class="connection-hint" role="alert">{{ t('saveFailed') }}</p> }
     </div>
     <div class="timer-track"><div [style.width.%]="elapsedPercent()"></div></div>
   }
 </section>
-
-@if (!result()) {
-  <section class="metric-grid" aria-label="Live statistics">
-    <div class="metric-card timer-card">
-      <div class="metric-icon"><td-icon name="clock" /></div>
-      <div><span>{{ t('timer') }}</span><strong [class.urgent]="test()?.view?.urgent">{{ clock() }}</strong></div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-icon"><td-icon name="bolt" /></div>
-      <div><span>{{ t(engaged() ? 'wpm' : 'averageSpeed') }}</span><strong>{{ (engaged() ? metrics()?.wpm : averageWpm()) | number:'1.0-1' }}</strong></div>
-      <span class="metric-unit">WPM</span>
-    </div>
-    <div class="metric-card">
-      <div class="metric-icon"><td-icon name="target" /></div>
-      <div><span>{{ t(engaged() ? 'accuracy' : 'averageAccuracy') }}</span><strong>{{ (engaged() ? metrics()?.accuracy : averageAccuracy()) | number:'1.0-1' }}<small>%</small></strong></div>
-    </div>
-  </section>
-}

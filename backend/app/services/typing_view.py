@@ -1,12 +1,9 @@
-from datetime import datetime
-from math import ceil
-
 from app.models.enums import SessionStatus
 from app.models.typing_test import TypingTest
-from app.services.typing_engine import characters, elapsed
+from app.services.typing_engine import characters
 
 
-def typing_view(test: TypingTest, now: datetime, word_by_word: bool) -> dict:
+def _prompt_words(test: TypingTest, word_by_word: bool) -> list[dict]:
     actual = characters(test.typed)
     words = []
     cursor = 0
@@ -29,18 +26,17 @@ def typing_view(test: TypingTest, now: datetime, word_by_word: bool) -> dict:
         words.append(item)
         if active_word is None and cursor > len(actual):
             active_word = item
-    remaining = max(0, test.duration - elapsed(test, now))
-    seconds = ceil(remaining)
+    return [active_word or words[-1]] if word_by_word and words else words
+
+
+def typing_view(test: TypingTest, word_by_word: bool, *, include_words: bool = True) -> dict:
     samples = test.result["samples"] if test.result else []
     maximum = max([10, *(sample["wpm"] for sample in samples)])
     return {
-        "words": [active_word or words[-1]] if word_by_word and words else words,
-        "clock": f"{seconds // 60:02d}:{seconds % 60:02d}",
-        "elapsed_percent": 100 * (1 - remaining / test.duration),
+        "words": _prompt_words(test, word_by_word) if include_words else [],
         "active": test.status in (SessionStatus.RUNNING, SessionStatus.PAUSED),
         "can_type": test.status != SessionStatus.FINISHED,
         "can_configure": test.status in (SessionStatus.READY, SessionStatus.FINISHED),
-        "urgent": test.status == SessionStatus.RUNNING and remaining <= 5,
         "custom_duration": test.duration not in (15, 30, 60),
         "durations": [15, 30, 60],
         "result_chart": [{**sample, "height_percent": max(3, sample["wpm"] / maximum * 100)}
