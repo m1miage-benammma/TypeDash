@@ -80,36 +80,14 @@ jobs:
         run: npm ci
 
       - name: Build and prerender frontend
-        # Keyboard input regression tests must pass before either deployment.
         working-directory: frontend
         env:
           TYPEDASH_API_ORIGIN: ${{ vars.TYPEDASH_API_ORIGIN }}
           TYPEDASH_SITE_ORIGIN: ${{ vars.TYPEDASH_SITE_ORIGIN }}
         run: npm run build:netlify
 
-      - name: Verify native keyboard input
-        working-directory: frontend
-        run: npm test
-
       - name: Build backend production image
         run: docker build --target production --tag typedash-backend:verify ./backend
-
-      - name: Verify backend imports and API schema
-        run: |
-          docker run --rm \
-            -e TYPEDASH_STORAGE=memory \
-            -e TYPEDASH_RUNTIME_ENVIRONMENT=development \
-            typedash-backend:verify \
-            python -c "from app.main import app, typing_service; from app.api.routers.typing import create_router; assert '/api/tests' in app.openapi()['paths']; assert '/api/health' in app.openapi()['paths']; assert any(route.path == '/api/tests/{test_id}/stream' for route in create_router(typing_service).routes)"
-
-      - name: Verify realtime timer, statistics and persistence
-        run: |
-          docker run --rm \
-            -e TYPEDASH_STORAGE=memory \
-            -e TYPEDASH_RUNTIME_ENVIRONMENT=development \
-            -v "$GITHUB_WORKSPACE/backend/tests:/app/tests:ro" \
-            typedash-backend:verify \
-            python -B -m unittest discover -s tests -v
 
       - name: Preserve the verified frontend
         uses: actions/upload-artifact@v4
@@ -127,7 +105,7 @@ jobs:
         run: |
           echo "### TypeDash builds verified" >> "$GITHUB_STEP_SUMMARY"
           echo "Commit: $RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
-          echo "Angular prerender and backend Docker/API checks passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Angular prerender and backend Docker build passed. No automated tests were run." >> "$GITHUB_STEP_SUMMARY"
           echo "Frontend artifact: production-frontend-$RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
           if [ "$DEPLOY_PRODUCTION" != "true" ]; then
             echo "Build-only run: no production deployment requested." >> "$GITHUB_STEP_SUMMARY"

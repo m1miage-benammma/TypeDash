@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+node_modules
+.angular
+dist
+tests
+**/*.spec.ts
+**/*.test.*
+coverage
+*.log
