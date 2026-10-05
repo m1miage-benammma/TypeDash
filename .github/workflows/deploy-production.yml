@@ -178,7 +178,7 @@ jobs:
           CI: "true"
         run: |
           netlify deploy --prod --no-build \
-            --site "$NETLIFY_SITE_ID" \
+            --site typedasha \
             --dir "$GITHUB_WORKSPACE/published" \
             --message "TypeDash production $RELEASE_COMMIT"
 
