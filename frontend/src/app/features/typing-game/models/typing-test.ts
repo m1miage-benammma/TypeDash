@@ -1,5 +1,6 @@
+import { Language } from '../../../core/models/language';
+
 export type Difficulty = 'easy' | 'medium' | 'hard';
-export type Language = 'en' | 'fr';
 
 export interface TestOptions {
   punctuation: boolean;
@@ -31,13 +32,37 @@ export interface TypingTest extends TestOptions {
   started_at: string | null;
   typed: string;
   revision: number;
+  observed_at: string;
   remaining_seconds: number;
   pause_after_seconds: number;
   idle_timeout_seconds: number;
   metrics: Metrics;
   result: TestResult | null;
+  view: TypingView;
 }
 
-export interface ApiResponse<T> {
-  data: T;
+export interface PromptWord {
+  index: number;
+  chars: {
+    index: number; value: string; current: boolean;
+    correct: boolean; incorrect: boolean; space: boolean;
+  }[];
 }
+
+export interface TypingView {
+  words: PromptWord[];
+  clock: string;
+  elapsed_percent: number;
+  active: boolean;
+  can_type: boolean;
+  can_configure: boolean;
+  urgent: boolean;
+  custom_duration: boolean;
+  durations: number[];
+  result_chart: { second: number; wpm: number; height_percent: number }[];
+}
+
+export type PrepareTestRequest = Partial<Omit<TestOptions, 'duration'>> & {
+  duration?: number | string;
+  word_by_word?: boolean;
+};

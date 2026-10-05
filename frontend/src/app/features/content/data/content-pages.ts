@@ -1,23 +1,5 @@
-import { Language } from '../../../features/typing-game/models/typing-test';
-import { PublicPageId } from '../../../core/seo/seo-pages';
-
-export type ContentPageId = Exclude<PublicPageId, 'typingTest'>;
-
-export interface ContentSection {
-  title: string;
-  paragraphs: string[];
-  bullets?: string[];
-}
-
-export interface ContentPage {
-  eyebrow: string;
-  title: string;
-  summary: string;
-  sections: ContentSection[];
-  ctaTitle: string;
-  ctaText: string;
-  ctaLabel: string;
-}
+import { Language } from '../../../core/models/language';
+import { ContentPage, ContentPageId } from '../models/content-page';
 
 export const CONTENT_PAGES: Record<Language, Record<ContentPageId, ContentPage>> = {
   en: {

@@ -1,0 +1,2 @@
+# Keep container shell scripts executable by /bin/sh on Windows checkouts.
+*.sh text eol=lf

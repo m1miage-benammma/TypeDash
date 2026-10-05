@@ -20,7 +20,7 @@
 
 TypeDash is a minimal typing practice application built around a distraction-free test experience. It generates English or French exercises, measures speed and accuracy on the backend, and keeps a history linked to the current browser device.
 
-The application uses an Angular frontend, a FastAPI backend organized with ports and adapters, and PostgreSQL for persistent data. Docker Compose provides a reproducible local environment with live reload for both applications.
+The application uses an Angular frontend, a FastAPI backend organized into API, services, repositories, and models, and PostgreSQL for persistent data. Docker Compose provides a reproducible local environment with live reload for both applications.
 
 ## Features
 
@@ -43,8 +43,8 @@ The application uses an Angular frontend, a FastAPI backend organized with ports
 | --- | --- |
 | Frontend | Angular 21, TypeScript, RxJS, Tailwind CSS 4 |
 | Backend | Python 3.12, FastAPI, Pydantic |
-| Data | PostgreSQL 16, psycopg |
-| Delivery | Docker Compose, Nginx |
+| Data | PostgreSQL (local Docker or Supabase), psycopg |
+| Delivery | Docker Compose, Nginx, Netlify static frontend |
 | Rendering | Angular prerendering with client-rendered typing interactions |
 
 ## Quick start with Docker
@@ -101,6 +101,12 @@ Stop the stack without deleting PostgreSQL data:
 docker compose down
 ```
 
+## Production: Netlify + Supabase
+
+The frontend is deployed as prerendered static files on Netlify. FastAPI runs on a separate container host and stores device-linked usernames, typing sessions and statistics in Supabase PostgreSQL over TLS.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for environment variables, database permissions, Netlify configuration, and the standalone production Compose file. No credentials are committed or included in Docker images.
+
 ## Local development
 
 ### Frontend
@@ -151,22 +157,17 @@ Memory mode is intended only for local previews. Its data disappears when the ba
 TypeDash/
 ├── backend/
 │   └── app/
-│       ├── adapters/
-│       │   ├── inbound/http/       # FastAPI routers and request/response schemas
-│       │   └── outbound/           # Persistence and prompt generation
-│       ├── application/
-│       │   ├── dto/                # Use-case input objects
-│       │   └── use_cases/          # Application orchestration
-│       ├── core/                    # Runtime configuration
-│       ├── domain/
-│       │   ├── entities/           # Typing and identity business rules
-│       │   ├── enums/              # Domain values
-│       │   └── ports/              # Repository and service interfaces
+│       ├── api/                     # Request/response DTOs and thin routers
+│       ├── core/                    # Runtime configuration and clock
+│       ├── data/                    # Static word banks
+│       ├── models/                  # Plain entities, enums, and errors
+│       ├── repositories/            # Persistence queries and transactions
+│       ├── services/                # All business rules and response preparation
 │       ├── dependencies.py
 │       └── main.py
 ├── frontend/
 │   └── src/app/
-│       ├── core/                    # Identity, preferences, i18n, validation, SEO
+│       ├── core/                    # Identity, preferences, i18n, SEO
 │       ├── features/
 │       │   ├── content/             # Guides and WPM calculator
 │       │   ├── progress/            # Device statistics page
@@ -179,15 +180,13 @@ TypeDash/
 
 ## Architecture
 
-The backend follows a hexagonal structure:
+Business logic belongs exclusively to backend services: input interpretation, character feedback, word advancement, timer and idle pause, scoring, username validation and limits, calculator results, averages, and history selection.
 
-1. Domain entities contain typing, scoring, timer, identity, and username rules.
-2. Application use cases coordinate the domain through explicit DTOs.
-3. Domain ports define persistence and prompt-generation contracts.
-4. Inbound adapters expose standardized FastAPI requests and responses.
-5. Outbound adapters implement PostgreSQL, in-memory storage, and word-bank access.
+Routers accept request DTOs and return service-built response DTOs. Repositories handle persistence only; entities are plain data objects. The structure intentionally avoids abstract repository interfaces and unnecessary layers.
 
-The frontend is feature-oriented. Each route has one parent page component, shared state is kept in focused services, and HTTP operations return RxJS Observables.
+The frontend captures raw input, calls the API through RxJS Observables, and displays server responses. It does not compute or filter typing data. Layout, focus, theme, localization, and HTTP synchronization remain UI responsibilities. An API connection is required for typing: the timer is polled from the backend, not simulated locally.
+
+Each route has a dedicated parent page component. Shared Header, Footer, dialogs, and username modals have separate components.
 
 ## API overview
 
@@ -196,8 +195,11 @@ The frontend is feature-oriented. Each route has one parent page component, shar
 | `GET` | `/api/health` | Check API availability |
 | `POST` | `/api/tests` | Prepare a typing test |
 | `GET` | `/api/tests/{test_id}` | Retrieve a typing session |
+| `PUT` | `/api/tests/{test_id}/input` | Submit a raw key event; return authoritative state and display data |
 | `PUT` | `/api/tests/{test_id}/progress` | Save current typing progress |
 | `POST` | `/api/tests/{test_id}/finish` | Finish and score a session |
+| `GET` | `/api/calculator` | Retrieve calculator defaults |
+| `POST` | `/api/calculator` | Calculate WPM and accuracy on the server |
 | `GET` | `/api/devices/{device_id}` | Retrieve a device profile and history |
 | `PUT` | `/api/devices/{device_id}/registration` | Register a username |
 | `PATCH` | `/api/devices/{device_id}/username` | Change a username |
@@ -209,7 +211,7 @@ Successful API responses use a `{ "data": ... }` envelope. Errors use a consiste
 
 Public pages have dedicated English and French routes, reciprocal `hreflang` links, canonical URLs, translated metadata, Open Graph tags, and JSON-LD. Editorial pages are generated as static HTML. The interactive typing test is deferred and initialized in the browser.
 
-The production origin is configured in `frontend/src/app/core/seo/seo-pages.ts` and must stay consistent with `frontend/public/robots.txt` and `frontend/public/sitemap.xml`.
+For Netlify, `TYPEDASH_SITE_ORIGIN` configures the production origin at build time (falling back to Netlify's `URL`). The build also updates `robots.txt` and `sitemap.xml` in the published output. The regular Docker build retains the source's default origin.
 
 ## Device identity and data
 

@@ -1,0 +1,21 @@
+[build]
+  base = "frontend"
+  command = "npm run build:netlify"
+  publish = "dist/frontend/browser"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# /api rewrites are generated at build time from TYPEDASH_API_ORIGIN.
+# Static prerendered pages take precedence over the non-forced SPA fallback.
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

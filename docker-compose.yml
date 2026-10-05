@@ -1,7 +1,9 @@
+# Local development with persistent PostgreSQL and hot reload.
 services:
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
       target: development
     environment:
       CHOKIDAR_USEPOLLING: "true"
@@ -12,15 +14,24 @@ services:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks: [typedash]
+    restart: unless-stopped
 
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
       target: development
-    env_file:
-      - ./.env
+    env_file: [./.env]
     environment:
+      TYPEDASH_RUNTIME_ENVIRONMENT: development
+      TYPEDASH_STORAGE: postgres
+      TYPEDASH_DATABASE_URL: ""
+      TYPEDASH_DB_HOST: postgres
+      TYPEDASH_DB_PORT: "5432"
+      TYPEDASH_DB_SSL_MODE: disable
       WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
@@ -29,21 +40,33 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks: [typedash]
+    restart: unless-stopped
 
   postgres:
+    # Keep version 16 to preserve existing local data. Upgrade separately with a backup.
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: "${TYPEDASH_DB_NAME:?TYPEDASH_DB_NAME must be set in .env}"
-      POSTGRES_USER: "${TYPEDASH_DB_USERNAME:?TYPEDASH_DB_USERNAME must be set in .env}"
-      POSTGRES_PASSWORD: "${TYPEDASH_DB_PASSWORD:?TYPEDASH_DB_PASSWORD must be set in .env}"
+      POSTGRES_DB: "${TYPEDASH_DB_NAME:?Set TYPEDASH_DB_NAME in .env}"
+      POSTGRES_USER: "${TYPEDASH_DB_USERNAME:?Set TYPEDASH_DB_USERNAME in .env}"
+      POSTGRES_PASSWORD: "${TYPEDASH_DB_PASSWORD:?Set TYPEDASH_DB_PASSWORD in .env}"
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks: [typedash]
+    restart: unless-stopped
+
+networks:
+  typedash:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
   frontend_node_modules:
+    driver: local

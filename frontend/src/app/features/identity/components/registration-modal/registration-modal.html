@@ -1,0 +1,23 @@
+<td-dialog [label]="t('registrationTitle')" [dismissible]="false">
+  <div class="text-center">
+    <span class="inline-grid size-11 place-items-center rounded-full bg-[var(--accent-tint)] text-[21px] text-[var(--accent)]"><td-icon name="trophy" /></span>
+    <h2 class="mt-4 mb-2 text-[21px] font-semibold">{{ t('registrationTitle') }}</h2>
+    <p class="text-[13px] leading-[1.6] text-[var(--muted)]">{{ t('registrationHint') }}</p>
+  </div>
+  <form class="mt-[22px] grid gap-[9px]" (submit)="registerUsername(); $event.preventDefault()">
+    <label class="text-[11px] font-bold" for="registration-username">{{ t('username') }}</label>
+    <input class="w-full rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-[13px] py-3 text-[var(--ink)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-tint)] aria-[invalid=true]:border-[var(--error)]"
+      id="registration-username" type="text" autofocus
+      autocomplete="username" autocapitalize="none" spellcheck="false"
+      [value]="usernameDraft()" [disabled]="registering()"
+      [attr.aria-invalid]="!!usernameError()" aria-describedby="registration-username-feedback"
+      (input)="validateUsername($event)" [placeholder]="t('usernamePlaceholder')" />
+    <span id="registration-username-feedback" class="min-h-4 text-[10px] leading-normal text-[var(--muted)]" [style.color]="usernameError() ? 'var(--error)' : null">
+      {{ t(usernameError() ?? 'usernameRules') }}
+    </span>
+    <button class="mt-[7px] rounded-lg bg-[var(--uga-navy)] px-5 py-3 text-xs font-semibold text-[var(--uga-white)] shadow-[inset_0_-3px_0_var(--accent)]"
+      type="submit" [disabled]="registering() || !!usernameError()">
+      {{ t(registering() ? 'registering' : 'saveUsername') }}
+    </button>
+  </form>
+</td-dialog>

@@ -1,0 +1,192 @@
+@if (restartModal()) {
+  <td-confirmation-modal [title]="t('restart')" [message]="t('restartConfirm')"
+    (confirmed)="confirmRestart()" (cancelled)="restartModal.set(false)" />
+}
+
+@if (registrationModal()) {
+  <td-registration-modal (registered)="registrationModal.set(false)" />
+}
+
+<section class="hero">
+  <div>
+    <h1>{{ t('headline') }} <em>{{ t('flow') }}</em></h1>
+  </div>
+  <div class="personal-best">
+    <div class="best-icon"><td-icon name="trophy" /></div>
+    <div>
+      <span class="small-label">{{ t('personalBest') }}</span>
+      @if (entries().length) {
+        <div class="best-value">{{ best() | number:'1.0-0' }} <span>WPM</span></div>
+      } @else {
+        <p class="best-empty">{{ t('noBest') }}</p>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="practice-card" [class.is-running]="running()" [attr.aria-label]="t('practice')">
+  <div class="test-toolbar">
+    <div class="text-options" role="group" [attr.aria-label]="t('textOptions')">
+      <button [class.selected]="options()?.punctuation" [attr.aria-pressed]="options()?.punctuation"
+        [disabled]="locked()" (click)="toggleOption('punctuation')">
+        <span aria-hidden="true">@</span>{{ t('punctuation') }}
+      </button>
+      <button [class.selected]="options()?.numbers" [attr.aria-pressed]="options()?.numbers"
+        [disabled]="locked()" (click)="toggleOption('numbers')">
+        <span aria-hidden="true">#</span>{{ t('numbers') }}
+      </button>
+    </div>
+
+    <div class="toolbar-right">
+      <div class="duration-tabs" [attr.aria-label]="t('duration')">
+        <td-icon name="clock" />
+        @for (duration of durations(); track duration) {
+          <button [class.selected]="!customSelected() && options()?.duration === duration"
+            [disabled]="locked()" [attr.aria-pressed]="!customSelected() && options()?.duration === duration"
+            (click)="setDuration(duration)">{{ duration }}<span>s</span></button>
+        }
+        <div class="custom-control">
+          <button [class.selected]="customSelected() || customOpen()" [attr.aria-expanded]="customOpen()"
+            [disabled]="locked()" (click)="toggleCustom()">{{ t('custom') }}</button>
+          @if (customOpen()) {
+            <div class="custom-panel">
+              <strong>{{ t('customDuration') }}</strong>
+              <label for="custom-duration">{{ t('customSeconds') }}</label>
+              <div class="custom-row">
+                <input #customInput id="custom-duration" type="text"
+                  inputmode="numeric" [value]="customDraft()" (input)="validateCustom($event)"
+                  (keydown.enter)="applyCustomDuration()" [placeholder]="t('customPlaceholder')"
+                  [attr.aria-invalid]="!!durationError()" aria-describedby="duration-feedback" />
+                <button class="apply-custom" (click)="applyCustomDuration()">{{ t('set') }}</button>
+              </div>
+              <span id="duration-feedback" [class.invalid]="durationError()">{{ t(durationError() ?? 'durationHint') }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="difficulty-select">
+        <select [value]="options()?.difficulty" [attr.aria-label]="t('difficulty')" [disabled]="locked()"
+          (change)="setDifficulty($event)">
+          <option value="easy">{{ t('easy') }}</option>
+          <option value="medium">{{ t('medium') }}</option>
+          <option value="hard">{{ t('hard') }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  @if (result(); as result) {
+    <div class="results" aria-live="polite">
+      <div class="result-heading">
+        <div><p class="eyebrow">{{ t('resultsEyebrow') }}</p><h2>{{ t('resultsTitle') }}</h2><p>{{ t('resultsHint') }}</p></div>
+        <span class="result-stamp"><td-icon name="check" /></span>
+      </div>
+      <div class="result-main">
+        <div><strong>{{ result.wpm | number:'1.0-1' }}</strong><span>{{ t('wpm') }}</span></div>
+        <div><strong>{{ result.accuracy | number:'1.0-1' }}<small>%</small></strong><span>{{ t('accuracy') }}</span></div>
+      </div>
+      <div class="result-details">
+        <span>{{ t('completeWords') }} <b>{{ result.completed_words }}</b></span>
+        <span>{{ t('characters') }} <b>{{ result.correct_characters }}</b></span>
+        <span>{{ t('mistakes') }} <b>{{ result.incorrect_characters }}</b></span>
+        <span>{{ t('elapsed') }} <b>{{ result.elapsed_seconds | number:'1.0-1' }}s</b></span>
+      </div>
+      @if (resultChart().length > 1) {
+        <div class="session-chart" role="img" [attr.aria-label]="t('resultChart')">
+          <div class="chart-bars">
+            @for (sample of resultChart(); track $index) {
+              <div [style.height.%]="sample.height_percent"></div>
+            }
+          </div>
+          <div class="chart-caption"><span>0s</span><span>{{ t('resultChart') }}</span><span>{{ result.elapsed_seconds | number:'1.0-0' }}s</span></div>
+        </div>
+      }
+      <div class="results-foot">
+        <button class="primary-button" (click)="prepare()">{{ t('again') }} <td-icon name="arrow" /></button>
+      </div>
+    </div>
+  } @else {
+    <div class="test-body">
+      <div class="passage-toolbar">
+        <span class="inline-timer" [class.active]="running()">
+          <td-icon name="clock" /><strong>{{ clock() }}</strong>
+        </span>
+        <div class="layout-toggle" role="group" [attr.aria-label]="t('layout')">
+          <button [class.selected]="!preferences.singleLine()" [attr.aria-pressed]="!preferences.singleLine()"
+            (click)="setLineMode(false)">{{ t('multipleLines') }}</button>
+          <button [class.selected]="preferences.singleLine()" [attr.aria-pressed]="preferences.singleLine()"
+            (click)="setLineMode(true)">{{ t('wordByWord') }}</button>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <div class="passage-placeholder" role="status"><span class="spinner"></span>{{ t('loading') }}</div>
+      } @else if (loadError()) {
+        <div class="passage-placeholder error-state" role="alert">
+          <p>{{ t('loadFailed') }}</p>
+          <button class="secondary-button" (click)="prepare()">{{ t('retry') }} <td-icon name="reset" /></button>
+        </div>
+      } @else {
+        <div #passage class="passage" [class.word-by-word]="singleLineMode()" [class.active-passage]="engaged()"
+          role="textbox" [attr.aria-label]="t('inputLabel')" aria-multiline="false"
+          [attr.aria-disabled]="!canType()" [attr.tabindex]="canType() ? 0 : -1"
+          [attr.lang]="options()?.language" (click)="focusInput()" (keydown)="onKeydown($event)"
+          (paste)="preventPaste($event)" (drop)="preventPaste($event)" dir="ltr">
+          @for (word of visibleWords(); track word.index) {
+            <span class="word">
+              @for (char of word.chars; track char.index) {
+                <span [class.current]="char.current"
+                  [class.correct]="char.correct"
+                  [class.incorrect]="char.incorrect"
+                  [class.space]="char.space">{{ char.value }}</span>
+              }
+            </span>
+          }
+        </div>
+      }
+
+      <div class="passage-footer">
+        <button class="icon-button" [disabled]="locked() || loading()" (click)="prepare()"
+          [attr.title]="t('newText')" [attr.aria-label]="t('newText')"><td-icon name="reset" /></button>
+      </div>
+
+      @if (pasteHint()) { <p class="input-hint" role="status">{{ t('paste') }}</p> }
+      @if (offline()) { <p class="connection-hint" role="status">{{ t('connection') }}</p> }
+
+      <div class="test-actions">
+        <div class="action-hint">
+          <td-icon name="clock" />
+          <span>{{ t(engaged() ? (running() ? 'runningHint' : 'pausedHint') : 'readyHint') }}</span>
+        </div>
+        @if (finishing()) {
+          <span class="saving" role="status"><span class="spinner"></span>{{ t('saving') }}</span>
+        } @else if (saveError()) {
+          <button class="secondary-button" (click)="restartModal.set(true)">{{ t('restart') }}</button>
+          <button class="primary-button" (click)="finish()">{{ t('retryResult') }} <td-icon name="reset" /></button>
+        } @else if (engaged()) {
+          <button class="secondary-button" (click)="restartModal.set(true)">{{ t('restart') }} <td-icon name="reset" /></button>
+        }
+      </div>
+      @if (saveError()) { <p class="connection-hint" role="alert">{{ t('saveFailed') }}</p> }
+    </div>
+    <div class="timer-track"><div [style.width.%]="elapsedPercent()"></div></div>
+  }
+</section>
+
+@if (!result()) {
+  <section class="metric-grid" aria-label="Live statistics">
+    <div class="metric-card timer-card">
+      <div class="metric-icon"><td-icon name="clock" /></div>
+      <div><span>{{ t('timer') }}</span><strong [class.urgent]="test()?.view?.urgent">{{ clock() }}</strong></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon"><td-icon name="bolt" /></div>
+      <div><span>{{ t(engaged() ? 'wpm' : 'averageSpeed') }}</span><strong>{{ (engaged() ? metrics()?.wpm : averageWpm()) | number:'1.0-1' }}</strong></div>
+      <span class="metric-unit">WPM</span>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon"><td-icon name="target" /></div>
+      <div><span>{{ t(engaged() ? 'accuracy' : 'averageAccuracy') }}</span><strong>{{ (engaged() ? metrics()?.accuracy : averageAccuracy()) | number:'1.0-1' }}<small>%</small></strong></div>
+    </div>
+  </section>
+}

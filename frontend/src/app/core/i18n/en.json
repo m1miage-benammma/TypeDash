@@ -103,5 +103,6 @@
   "typingErrors": "Typing errors",
   "grossWpm": "Gross WPM",
   "adjustedWpm": "Adjusted WPM",
-  "github": "GitHub repository"
+  "github": "GitHub repository",
+  "clearHistoryFailed": "We could not clear your history. Try again."
 }

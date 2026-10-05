@@ -1,0 +1,23 @@
+<td-dialog [label]="t('editUsername')" [dismissible]="!updatingUsername()" (dismissed)="closeUsernameModal()">
+<h2 class="mb-[7px] text-[21px] font-semibold" id="username-modal-title">{{ t('editUsername') }}</h2>
+<p class="mb-5 text-xs leading-[1.55] text-[var(--muted)]">{{ t('editUsernameHint') }}</p>
+<form class="grid gap-2" (submit)="saveUsername(); $event.preventDefault()">
+  <label class="text-[11px] font-bold" for="edit-username">{{ t('username') }}</label>
+  <input class="w-full rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-[13px] py-3 text-[var(--ink)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-tint)] aria-[invalid=true]:border-[var(--error)]"
+    autofocus id="edit-username" type="text" autocomplete="username"
+    autocapitalize="none" spellcheck="false" [value]="usernameDraft()" [disabled]="updatingUsername() || usernameLimitReached()"
+    [attr.aria-invalid]="!!usernameError()" [attr.aria-describedby]="usernameError() ? 'edit-username-feedback' : null"
+    (input)="validateUsername($event)" [placeholder]="t('usernamePlaceholder')" />
+  @if (usernameError(); as error) {
+    <span class="text-[10px] leading-normal text-[var(--error)]" id="edit-username-feedback">{{ t(error) }}</span>
+  }
+  <div class="mt-3 grid grid-cols-2 gap-2.5">
+    <button class="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3.5 py-[11px] text-[11px] font-bold"
+      type="button" [disabled]="updatingUsername()" (click)="closeUsernameModal()">{{ t('cancel') }}</button>
+    <button class="rounded-lg bg-[var(--uga-navy)] px-3.5 py-[11px] text-[11px] font-bold text-[var(--uga-white)] shadow-[inset_0_-3px_0_var(--accent)] hover:bg-[var(--brand-hover)]"
+      type="submit" [disabled]="updatingUsername() || !!usernameError() || usernameLimitReached()">
+      {{ t(updatingUsername() ? 'updatingUsername' : 'updateUsername') }}
+    </button>
+  </div>
+</form>
+</td-dialog>

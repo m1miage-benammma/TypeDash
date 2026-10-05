@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 
-import { TypingPage } from './typing-page';
+import { TypingGame } from '../components/typing-game/typing-game';
 
 @Component({
   selector: 'td-typing-test-page',
-  imports: [TypingPage],
+  imports: [TypingGame],
   template: `
     @defer (on immediate) {
-      <td-typing-page />
+      <td-typing-game />
     } @placeholder {
       <div class="min-h-[640px]" aria-hidden="true"></div>
     }

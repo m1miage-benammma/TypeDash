@@ -1,4 +1,4 @@
-import { Language } from '../../features/typing-game/models/typing-test';
+import { Language } from '../models/language';
 
 export type LocalizedPageId =
   | 'typingTest'

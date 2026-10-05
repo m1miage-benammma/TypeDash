@@ -1,11 +1,26 @@
-from fastapi import Request
-from app.application.use_cases.device_accounts import DeviceAccounts
-from app.application.use_cases.typing_tests import TypingTests
+from uuid import UUID
+
+from app.api.schemas.device import DeviceRequest, DeviceUsernameRequest, UsernameRequest
+from app.api.schemas.typing import (
+    GetTypingTestRequest, TypingProgressRequest, UpdateTypingTestRequest,
+    TypingInputRequest, UpdateTypingInputRequest,
+)
 
 
-def get_typing_tests(request: Request) -> TypingTests:
-    return request.app.state.typing_tests
+def get_device_request(device_id: UUID) -> DeviceRequest:
+    return DeviceRequest(device_id=device_id)
 
 
-def get_device_accounts(request: Request) -> DeviceAccounts:
-    return request.app.state.device_accounts
+def get_username_request(device_id: UUID, body: UsernameRequest) -> DeviceUsernameRequest:
+    return DeviceUsernameRequest(device_id=device_id, username=body.username)
+
+
+def get_test_request(test_id: UUID, device_id: UUID | None = None, word_by_word: bool = False) -> GetTypingTestRequest:
+    return GetTypingTestRequest(test_id=test_id, device_id=device_id, word_by_word=word_by_word)
+
+
+def get_progress_request(test_id: UUID, body: TypingProgressRequest) -> UpdateTypingTestRequest:
+    return UpdateTypingTestRequest(test_id=test_id, **body.model_dump())
+
+def get_input_request(test_id: UUID, body: TypingInputRequest) -> UpdateTypingInputRequest:
+    return UpdateTypingInputRequest(test_id=test_id, **body.model_dump())

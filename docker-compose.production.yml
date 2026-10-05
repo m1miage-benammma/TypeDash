@@ -1,0 +1,41 @@
+# Standalone file: do NOT combine it with the local development compose file.
+# Netlify serves the real frontend; Supabase hosts PostgreSQL externally.
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    env_file: [./.env.production]
+    environment:
+      TYPEDASH_RUNTIME_ENVIRONMENT: production
+      TYPEDASH_STORAGE: postgres
+      TYPEDASH_DEBUG: "false"
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks: [typedash]
+    restart: unless-stopped
+    init: true
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+
+  # Optional local smoke-test of the production Angular/Nginx image.
+  frontend:
+    profiles: [preview]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [typedash]
+    restart: unless-stopped
+
+networks:
+  typedash:
+    driver: bridge

@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 
 import en from '../i18n/en.json';
 import fr from '../i18n/fr.json';
-import { Language } from '../../features/typing-game/models/typing-test';
+import { Language } from '../models/language';
 import { PreferencesService } from './preferences.service';
 
 export type TranslationKey = keyof typeof en;

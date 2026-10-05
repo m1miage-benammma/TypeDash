@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     app_name: str = "TypeDash API"
     debug: bool = False
     storage: Literal["postgres", "memory"] = "postgres"
+    runtime_environment: Literal["development", "production"] = "development"
+    database_url: SecretStr | None = None
+    db_ssl_mode: Literal["disable", "require", "verify-ca", "verify-full"] = "require"
+    db_ssl_root_cert: str | None = None
     db_username: str | None = None
     db_password: SecretStr | None = None
     db_host: str | None = None
@@ -20,11 +24,23 @@ class Settings(BaseSettings):
         env_file=".env",
         env_prefix="TYPEDASH_",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     @model_validator(mode="after")
     def require_postgres_environment(self):
+        if self.runtime_environment == "production":
+            if self.storage != "postgres":
+                raise ValueError("Production requires persistent PostgreSQL storage.")
+            if self.db_ssl_mode == "disable":
+                raise ValueError("Production requires an encrypted database connection.")
+            if self.debug:
+                raise ValueError("Debug mode must be disabled in production.")
         if self.storage == "memory":
+            return self
+        if self.db_ssl_mode in ("verify-ca", "verify-full") and not self.db_ssl_root_cert:
+            raise ValueError("TYPEDASH_DB_SSL_ROOT_CERT is required for certificate verification.")
+        if self.database_url and self.database_url.get_secret_value():
             return self
 
         values = {

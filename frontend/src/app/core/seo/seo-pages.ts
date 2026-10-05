@@ -1,7 +1,10 @@
-import { Language } from '../../features/typing-game/models/typing-test';
+import { Language } from '../models/language';
 import { LOCALIZED_PATHS, LocalizedPageId } from './localized-routes';
 
-export const SITE_ORIGIN = 'https://typedash.com';
+// Replaced by Angular's build-time define; public configuration, never a secret.
+declare const TYPEDASH_SITE_ORIGIN: string;
+export const SITE_ORIGIN = typeof TYPEDASH_SITE_ORIGIN === 'undefined'
+  ? 'https://typedash.com' : TYPEDASH_SITE_ORIGIN;
 export const SOCIAL_IMAGE_PATH = '/typedash-social-card.svg';
 
 export type PublicPageId = Exclude<LocalizedPageId, 'progress'>;

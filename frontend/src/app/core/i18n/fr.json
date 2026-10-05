@@ -103,5 +103,6 @@
   "typingErrors": "Erreurs de frappe",
   "grossWpm": "MPM bruts",
   "adjustedWpm": "MPM corrigés",
-  "github": "Dépôt GitHub"
+  "github": "Dépôt GitHub",
+  "clearHistoryFailed": "Impossible d’effacer votre historique. Réessayez."
 }

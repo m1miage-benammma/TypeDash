@@ -27,6 +27,9 @@ export interface DeviceProfile {
   device_id: string;
   username: string | null;
   registered: boolean;
+  requires_registration: boolean;
+  can_change_username: boolean;
+  history_chart: { id: string; wpm: number; finished_at: string; height_pixels: number }[];
   username_changes: number;
   username_changes_remaining: number;
   summary: DeviceSummary;

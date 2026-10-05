@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable, signal } from '@angular/core';
-import { Language, TestOptions } from '../../features/typing-game/models/typing-test';
+import { Language } from '../models/language';
+import { TestOptions } from '../../features/typing-game/models/typing-test';
 
 export function readLocal<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
@@ -32,15 +33,8 @@ export class PreferencesService {
   setLineMode(singleLine: boolean): void {
     this.singleLine.set(singleLine); writeLocal('typedash.single-line', singleLine);
   }
-  loadOptions(): TestOptions {
-    const saved = readLocal<Partial<TestOptions>>('typedash.options', {});
-    return {
-      punctuation: saved.punctuation === true,
-      numbers: saved.numbers === true,
-      difficulty: saved.difficulty === 'medium' || saved.difficulty === 'hard' ? saved.difficulty : 'easy',
-      duration: Number.isInteger(saved.duration) && saved.duration! >= 1 && saved.duration! <= 300 ? saved.duration! : 30,
-      language: this.language(),
-    };
+  loadOptions(): Partial<TestOptions> {
+    return readLocal<Partial<TestOptions>>('typedash.options', {});
   }
   private apply(): void {
     const dark = this.dark();

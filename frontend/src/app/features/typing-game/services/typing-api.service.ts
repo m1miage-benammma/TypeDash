@@ -1,34 +1,33 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable, timeout } from 'rxjs';
+
 import { environment } from '../../../../environments/environment';
-import { ApiResponse, TestOptions, TypingTest } from '../models/typing-test';
+import { ApiResponse } from '../../../core/models/api-response';
+import { PrepareTestRequest, TypingTest } from '../models/typing-test';
 
 @Injectable({ providedIn: 'root' })
 export class TypingApiService {
   private readonly http = inject(HttpClient);
   private readonly url = environment.apiUrl + '/tests';
 
-  prepare(options: TestOptions): Observable<TypingTest> {
+  prepare(options: PrepareTestRequest): Observable<TypingTest> {
     return this.unwrap(this.http.post<ApiResponse<TypingTest>>(this.url, options));
   }
-  get(id: string, deviceId: string | null = null): Observable<TypingTest> {
-    const query = deviceId ? '?device_id=' + encodeURIComponent(deviceId) : '';
-    return this.unwrap(this.http.get<ApiResponse<TypingTest>>(this.url + '/' + id + query));
+
+  get(id: string, deviceId: string | null, wordByWord: boolean): Observable<TypingTest> {
+    const params: Record<string, string> = { word_by_word: String(wordByWord) };
+    if (deviceId) params['device_id'] = deviceId;
+    return this.unwrap(this.http.get<ApiResponse<TypingTest>>(this.url + '/' + id, { params }));
   }
-  progress(id: string, deviceId: string, typed: string, revision: number): Observable<TypingTest> {
-    return this.unwrap(this.http.put<ApiResponse<TypingTest>>(
-      this.url + '/' + id + '/progress',
-      { device_id: deviceId, typed, revision },
-    ));
+
+  input(id: string, deviceId: string, key: string, sequence: number, wordByWord: boolean): Observable<TypingTest> {
+    return this.unwrap(this.http.put<ApiResponse<TypingTest>>(this.url + '/' + id + '/input', {
+      device_id: deviceId, key, sequence, word_by_word: wordByWord,
+    }));
   }
-  finish(id: string, deviceId: string, typed: string, revision: number): Observable<TypingTest> {
-    return this.unwrap(this.http.post<ApiResponse<TypingTest>>(
-      this.url + '/' + id + '/finish',
-      { device_id: deviceId, typed, revision },
-    ));
-  }
-  private unwrap(source: Observable<ApiResponse<TypingTest>>): Observable<TypingTest> {
-    return source.pipe(timeout(10000), map(response => response.data));
+
+  private unwrap(response: Observable<ApiResponse<TypingTest>>): Observable<TypingTest> {
+    return response.pipe(timeout(10000), map(value => value.data));
   }
 }

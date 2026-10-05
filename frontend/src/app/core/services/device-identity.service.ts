@@ -3,7 +3,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { catchError, finalize, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { ApiResponse } from '../../features/typing-game/models/typing-test';
+import { ApiResponse } from '../models/api-response';
 import { DeviceProfile } from '../models/device-profile';
 
 const DEVICE_ID_KEY = 'typedash.device-id';
