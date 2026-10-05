@@ -1,0 +1,13 @@
+@if (analytics.settingsOpen()) {
+  <section class="consent" role="region" [attr.aria-label]="preferences.language() === 'fr' ? 'Préférences de confidentialité' : 'Privacy preferences'">
+    <h2>{{ preferences.language() === 'fr' ? 'Mesure d’audience, à toi de choisir.' : 'Analytics, your choice.' }}</h2>
+    <p>{{ preferences.language() === 'fr'
+      ? 'Avec ton accord, Google Analytics utilise des cookies pour mesurer les visites des pages. Aucun texte saisi ni pseudo n’est envoyé. Tu peux refuser et continuer à utiliser toutes les fonctionnalités, ou modifier ton choix dans le pied de page.'
+      : 'With your permission, Google Analytics uses cookies to measure page visits. No typed text or username is sent. You can refuse and still use every feature, or change your choice in the footer.' }}</p>
+    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">{{ preferences.language() === 'fr' ? 'Confidentialité Google' : 'Google privacy policy' }}</a>
+    <div class="actions">
+      <button type="button" (click)="analytics.choose(false)">{{ preferences.language() === 'fr' ? 'Refuser' : 'Reject' }}</button>
+      <button type="button" (click)="analytics.choose(true)">{{ preferences.language() === 'fr' ? 'Accepter' : 'Accept' }}</button>
+    </div>
+  </section>
+}

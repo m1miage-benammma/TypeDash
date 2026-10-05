@@ -19,3 +19,14 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Allow crawling so search engines can read noindex on personal-history pages.
+[[headers]]
+  for = "/en/progress"
+  [headers.values]
+    X-Robots-Tag = "noindex, follow"
+
+[[headers]]
+  for = "/fr/progres"
+  [headers.values]
+    X-Robots-Tag = "noindex, follow"

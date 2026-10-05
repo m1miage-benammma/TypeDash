@@ -18,7 +18,7 @@ function publicOrigin(value, name) {
 
 // Only public addresses are read here. Never expose database credentials or keys.
 const apiOrigin = publicOrigin(process.env.TYPEDASH_API_ORIGIN, 'TYPEDASH_API_ORIGIN');
-const siteOrigin = publicOrigin(process.env.TYPEDASH_SITE_ORIGIN || process.env.URL, 'TYPEDASH_SITE_ORIGIN');
+const siteOrigin = publicOrigin(process.env.TYPEDASH_SITE_ORIGIN || 'https://typedash.online', 'TYPEDASH_SITE_ORIGIN');
 if (apiOrigin === siteOrigin) throw new Error('API origin must point to the separately hosted FastAPI backend.');
 
 const result = spawnSync(process.execPath, [
@@ -30,7 +30,17 @@ if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
 writeFileSync(resolve(publish, '_redirects'),
-  `/api/* ${apiOrigin}/api/:splat 200!\n/* /index.csr.html 200\n`, 'utf8');
+  [
+    `/api/* ${apiOrigin}/api/:splat 200!`,
+    '/typing-test /en/typing-test 301',
+    '/typing-speed-guide /en/typing-speed-guide 301',
+    '/improve-typing-accuracy /en/improve-typing-accuracy 301',
+    '/wpm-calculator /en/wpm-calculator 301',
+    '/typing-test-for-programmers /en/typing-test-for-programmers 301',
+    '/progress /en/progress 301',
+    '/* /index.csr.html 200',
+    '',
+  ].join('\n'), 'utf8');
 // CLI uploads do not read the repository's netlify.toml: preserve its headers.
 writeFileSync(resolve(publish, '_headers'), [
   '/api/*',
@@ -38,9 +48,13 @@ writeFileSync(resolve(publish, '_headers'), [
   '/*',
   '  X-Content-Type-Options: nosniff',
   '  Referrer-Policy: strict-origin-when-cross-origin',
+  '/en/progress',
+  '  X-Robots-Tag: noindex, follow',
+  '/fr/progres',
+  '  X-Robots-Tag: noindex, follow',
   '',
 ].join('\n'), 'utf8');
 for (const file of ['robots.txt', 'sitemap.xml']) {
   const path = resolve(publish, file);
-  writeFileSync(path, readFileSync(path, 'utf8').replaceAll('https://typedash.com', siteOrigin), 'utf8');
+  writeFileSync(path, readFileSync(path, 'utf8').replaceAll('https://typedash.online', siteOrigin), 'utf8');
 }

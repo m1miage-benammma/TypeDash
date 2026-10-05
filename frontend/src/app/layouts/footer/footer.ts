@@ -5,6 +5,7 @@ import { LocalizedPageId, localizedPath } from '../../core/seo/localized-routes'
 import { I18nService } from '../../core/services/i18n.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { Icon } from '../../shared/components/icon/icon';
+import { AnalyticsService } from '../../core/analytics/analytics.service';
 
 @Component({
   selector: 'td-footer',
@@ -14,6 +15,8 @@ import { Icon } from '../../shared/components/icon/icon';
   host: { class: 'block' },
 })
 export class Footer {
+  readonly analytics = inject(AnalyticsService);
+  readonly language = inject(PreferencesService).language;
   private readonly preferences = inject(PreferencesService);
   private readonly i18n = inject(I18nService);
   readonly t = this.i18n.t.bind(this.i18n);

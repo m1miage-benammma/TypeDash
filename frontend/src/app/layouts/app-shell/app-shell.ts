@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { afterNextRender, Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -11,10 +11,12 @@ import { ChangeUsernameModal } from '../../features/identity/components/change-u
 import { Language } from '../../core/models/language';
 import { Header } from '../header/header';
 import { Footer } from '../footer/footer';
+import { AnalyticsService } from '../../core/analytics/analytics.service';
+import { AnalyticsConsent } from '../../shared/components/analytics-consent/analytics-consent';
 
 @Component({
   selector: 'td-app-shell',
-  imports: [RouterOutlet, Header, Footer, ChangeUsernameModal],
+  imports: [RouterOutlet, Header, Footer, ChangeUsernameModal, AnalyticsConsent],
   templateUrl: './app-shell.html',
   host: { class: 'block' },
 })
@@ -25,8 +27,10 @@ export class AppShell {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly seo = inject(SeoService);
+  private readonly analytics = inject(AnalyticsService);
 
   constructor() {
+    afterNextRender(() => this.analytics.initialize());
     this.applyRouteContext();
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd),
@@ -44,6 +48,9 @@ export class AppShell {
 
     if (pageId) this.currentPage.set(pageId);
     if (language && this.preferences.language() !== language) this.preferences.setLanguage(language);
-    if (seoPage) this.seo.apply(seoPage);
+    if (seoPage) {
+      this.seo.apply(seoPage);
+      this.analytics.viewPage(seoPage.path, seoPage.title);
+    }
   }
 }

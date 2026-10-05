@@ -4,7 +4,7 @@ import { LOCALIZED_PATHS, LocalizedPageId } from './localized-routes';
 // Replaced by Angular's build-time define; public configuration, never a secret.
 declare const TYPEDASH_SITE_ORIGIN: string;
 export const SITE_ORIGIN = typeof TYPEDASH_SITE_ORIGIN === 'undefined'
-  ? 'https://typedash.com' : TYPEDASH_SITE_ORIGIN;
+  ? 'https://typedash.online' : TYPEDASH_SITE_ORIGIN;
 export const SOCIAL_IMAGE_PATH = '/typedash-social-card.svg';
 
 export type PublicPageId = Exclude<LocalizedPageId, 'progress'>;
@@ -16,7 +16,7 @@ export interface SeoPage {
   title: string;
   description: string;
   pageType: 'application' | 'article' | 'private';
-  robots?: 'index,follow' | 'noindex,nofollow';
+  robots?: 'index,follow' | 'noindex,follow';
 }
 
 type PublicSeoCopy = Record<PublicPageId, Pick<SeoPage, 'title' | 'description' | 'pageType'>>;
@@ -97,6 +97,6 @@ export function privateSeo(language: Language): SeoPage {
       ? 'Consultez les statistiques de frappe enregistrées pour cet appareil.'
       : 'Review the typing statistics saved for this device.',
     pageType: 'private',
-    robots: 'noindex,nofollow',
+    robots: 'noindex,follow',
   };
 }

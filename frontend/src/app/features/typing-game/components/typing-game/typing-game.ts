@@ -19,6 +19,7 @@ import { TypingInput } from '../../models/typing-input';
 import { SessionResults } from '../session-results/session-results';
 import { previewWords } from './typing-preview';
 import { TypingConnection, TypingStreamService } from '../../services/typing-stream.service';
+import { AnalyticsService } from '../../../../core/analytics/analytics.service';
 
 @Component({
   selector: 'td-typing-game',
@@ -31,6 +32,7 @@ export class TypingGame {
   readonly preferences = inject(PreferencesService);
   readonly identity = inject(DeviceIdentityService);
   private readonly api = inject(TypingApiService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly stream = inject(TypingStreamService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly viewport = window.matchMedia('(max-width: 560px)');
@@ -246,6 +248,7 @@ export class TypingGame {
     if (test.id !== current?.id || test.revision < current.revision) return;
     if (test.revision === current.revision && test.observed_at < current.observed_at) return;
     const previouslyFinished = !!current.result;
+    if (!current.started_at && test.started_at) this.analytics.sessionEvent('typing_session_start', test);
     this.test.set(test);
     this.receivedAt.set(performance.now());
     this.pendingInputs.update(pending => {
@@ -257,6 +260,7 @@ export class TypingGame {
     this.offline.set(false);
     if (test.typed !== current.typed) setTimeout(() => this.scrollCaret());
     if (test.result && !previouslyFinished) {
+      this.analytics.sessionEvent('typing_session_complete', test);
       this.clearActive();
       this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         error: () => this.offline.set(true),

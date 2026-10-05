@@ -3,6 +3,7 @@
   <main class="mx-auto min-h-[calc(100vh-184px)] max-w-[1120px] pb-[42px]"><router-outlet /></main>
   <td-footer />
 </div>
+<td-analytics-consent />
 
 @if (usernameModalOpen()) {
   <td-change-username-modal (closed)="usernameModalOpen.set(false)" />
