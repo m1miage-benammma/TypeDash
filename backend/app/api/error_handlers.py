@@ -41,6 +41,7 @@ async def typing_test_error(_request: Request, exc: TypingTestError):
         "duration_max": "The maximum duration is 300 seconds.",
         "duration_invalid": "Duration must be a positive integer.",
         "calculator_invalid": "The calculator contains invalid values.",
+        "not_configurable": "Only a ready typing session can be configured.",
         "input_out_of_order": "Input events must be sent in sequence.",
     }
     return _error_response(

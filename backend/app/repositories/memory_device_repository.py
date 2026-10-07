@@ -43,19 +43,16 @@ class MemoryDeviceRepository:
     def save_user(self, user: User) -> None:
         self.users[user.id] = user
 
-    def list_stats(self, device_id: str, limit: int = 30, offset: int = 0) -> list[TypingStat]:
-        rows = sorted((stat for stat in self.stats.values() if stat.device_id == device_id),
-                      key=lambda stat: (stat.finished_at, stat.id), reverse=True)
-        return rows[offset:offset + limit]
-
-    def stats_summary(self, device_id: str) -> StatsSummary:
-        rows = [stat for stat in self.stats.values() if stat.device_id == device_id]
+    def stats_snapshot(self, device_id: str, limit: int = 30,
+                       offset: int = 0) -> tuple[list[TypingStat], StatsSummary]:
+        rows = self._stats_for_device(device_id)
         count = len(rows)
-        return StatsSummary(
+        summary = StatsSummary(
             sessions=count, best_wpm=max((stat.wpm for stat in rows), default=0),
             average_wpm=sum(stat.wpm for stat in rows) / count if count else 0,
             average_accuracy=sum(stat.accuracy for stat in rows) / count if count else 0,
         )
+        return rows[offset:offset + limit], summary
 
     def has_stat(self, test_id: str) -> bool:
         return test_id in self.stats
@@ -66,10 +63,17 @@ class MemoryDeviceRepository:
 
     def save_stat(self, stat: TypingStat) -> None:
         if stat.source_test_id not in self.stats:
-            for old in self.list_stats(stat.device_id, limit=len(self.stats), offset=1999):
+            for old in self._stats_for_device(stat.device_id)[1999:]:
                 self.stats.pop(old.source_test_id, None)
         self.stats[stat.source_test_id] = stat
 
     def delete_stats(self, device_id: str) -> None:
         self.stats = {key: stat for key, stat in self.stats.items()
                       if stat.device_id != device_id}
+
+    def _stats_for_device(self, device_id: str) -> list[TypingStat]:
+        return sorted(
+            (stat for stat in self.stats.values() if stat.device_id == device_id),
+            key=lambda stat: (stat.finished_at, stat.id),
+            reverse=True,
+        )

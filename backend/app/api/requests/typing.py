@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
@@ -35,3 +36,11 @@ class TypingBatchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     device_id: UUID
     inputs: list[TypingKeyRequest] = Field(min_length=1, max_length=32)
+
+
+class TypingDurationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["duration"]
+    device_id: UUID
+    duration: StrictInt = Field(ge=1, le=300)

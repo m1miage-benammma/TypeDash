@@ -223,7 +223,23 @@ export class TypingGame {
     this.prepare({ [option]: !this.options()[option] });
   }
 
-  setDuration(duration: number): void { this.prepare({ duration }); }
+  setDuration(duration: number): void {
+    const test = this.test();
+    if (!test || this.locked()) return;
+    this.options.set({ ...this.options(), duration });
+    this.test.set({
+      ...test,
+      duration,
+      remaining_seconds: duration,
+      view: { ...test.view, custom_duration: !this.durations().includes(duration) },
+    });
+    this.receivedAt.set(performance.now());
+    this.durationError.set(null);
+    this.customOpen.set(false);
+    this.connection?.setDuration(duration);
+    writeLocal('typedash.options', this.requestOptions());
+    this.focusInput();
+  }
 
   toggleCustom(): void {
     this.customOpen.update(open => !open);
@@ -238,7 +254,19 @@ export class TypingGame {
     this.durationError.set(null);
   }
 
-  applyCustomDuration(): void { this.prepare({ duration: this.customDraft() }); }
+  applyCustomDuration(): void {
+    const value = this.customDraft().trim();
+    if (!/^\d+$/.test(value) || Number(value) < 1) {
+      this.durationError.set('durationInvalid');
+      return;
+    }
+    const duration = Number(value);
+    if (duration > 300) {
+      this.durationError.set('durationMax');
+      return;
+    }
+    this.setDuration(duration);
+  }
 
   setDifficulty(event: Event): void {
     this.prepare({ difficulty: (event.target as HTMLSelectElement).value as Difficulty });

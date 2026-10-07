@@ -20,7 +20,6 @@ class PostgresTypingTestRepository:
         with self.admin_connect() as connection:
             connection.execute(SCHEMA_SQL)
 
-
     @contextmanager
     def transaction(self):
         with self.connect() as connection:

@@ -22,6 +22,7 @@ export class Leaderboard {
 
   constructor() {
     effect(onCleanup => {
+      if (!this.identity.initialized()) return;
       this.identity.profile();
       this.failed.set(false);
       const subscription = this.api.get().subscribe({

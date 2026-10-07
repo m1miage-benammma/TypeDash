@@ -101,8 +101,7 @@ class DeviceService:
 
     def _response(self, storage, device: Device) -> ApiResponse[DeviceProfileResponse]:
         user = storage.find_user(device.user_id) if device.user_id else None
-        stats = storage.list_stats(device.id, limit=30, offset=0)
-        summary = storage.stats_summary(device.id)
+        stats, summary = storage.stats_snapshot(device.id, limit=30, offset=0)
         profile = DeviceProfile(
             device=device, user=user, stats=stats, total_sessions=summary.sessions,
             best_wpm=summary.best_wpm, average_wpm=summary.average_wpm,

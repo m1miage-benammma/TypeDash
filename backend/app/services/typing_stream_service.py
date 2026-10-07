@@ -1,12 +1,17 @@
 """Realtime transport; scoring stays in the existing typing services."""
 import asyncio
+import json
 from copy import deepcopy
 from time import monotonic
 
 from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
-from app.api.requests.typing import GetTypingTestRequest, TypingBatchRequest
+from app.api.requests.typing import (
+    GetTypingTestRequest,
+    TypingBatchRequest,
+    TypingDurationRequest,
+)
 from app.core.clock import utc_now
 from app.models.errors import TypingTestError
 from app.services.typing_engine import elapsed, update_test
@@ -30,15 +35,18 @@ class TypingStreamService:
     def _persist(self, test, device_id):
         self.typing.persist(test, device_id)
 
-    def _frame(self, test, now, word_by_word):
+    def _frame(self, test, now, word_by_word, *, include_duration=False):
         # Static prompt/options are sent once at connection time. Subsequent
         # frames contain timer/input acknowledgements; scores are end-only.
+        excluded = {
+            "text": True, "punctuation": True, "numbers": True,
+            "difficulty": True, "language": True, "duration": True,
+            "view": {"words": True},
+        }
+        if include_duration:
+            excluded.pop("duration")
         return self.typing._response(test, now, word_by_word, include_words=False).model_dump(
-            mode="json", exclude={"data": {
-                "text": True, "punctuation": True, "numbers": True,
-                "difficulty": True, "language": True, "duration": True,
-                "view": {"words": True},
-            }},
+            mode="json", exclude={"data": excluded},
         )
 
     async def connect(self, socket: WebSocket, request: GetTypingTestRequest):
@@ -88,14 +96,34 @@ class TypingStreamService:
                     if len(payload) > 8192:
                         await socket.close(code=1009)
                         break
-                    batch = TypingBatchRequest.model_validate_json(payload)
-                    if str(batch.device_id) != device_id:
-                        raise TypingTestError("device_mismatch")
                     if monotonic() - window_started >= 1:
                         window_started, input_count, frame_count = monotonic(), 0, 0
-                    input_count += len(batch.inputs)
                     frame_count += 1
-                    if input_count > 64 or frame_count > 40:
+                    if frame_count > 40:
+                        await socket.close(code=1008, reason="Typing rate limit exceeded.")
+                        break
+                    message = json.loads(payload)
+                    if not isinstance(message, dict):
+                        raise ValueError("stream messages must be JSON objects")
+                    if message.get("type") == "duration":
+                        control = TypingDurationRequest.model_validate(message)
+                        if str(control.device_id) != device_id:
+                            raise TypingTestError("device_mismatch")
+                        self.typing.set_duration(test, control.duration)
+                        self.typing.live_tests[test_id] = test
+                        await asyncio.to_thread(self._persist, deepcopy(test), device_id)
+                        checkpoint = (test.revision, test.status, test.active_seconds)
+                        last_saved = monotonic()
+                        await socket.send_json(self._frame(
+                            test, now, word_by_word, include_duration=True,
+                        ))
+                        last_sent = monotonic()
+                        continue
+                    batch = TypingBatchRequest.model_validate(message)
+                    if str(batch.device_id) != device_id:
+                        raise TypingTestError("device_mismatch")
+                    input_count += len(batch.inputs)
+                    if input_count > 64:
                         await socket.close(code=1008, reason="Typing rate limit exceeded.")
                         break
                     # Bound work per frame and keep CPU-heavy scoring off the event loop.
@@ -126,7 +154,7 @@ class TypingStreamService:
                 await socket.close(code=1000)
         except WebSocketDisconnect:
             pass
-        except (ValidationError, TypingTestError):
+        except (ValidationError, TypingTestError, ValueError):
             await socket.close(code=1008)
         finally:
             try:

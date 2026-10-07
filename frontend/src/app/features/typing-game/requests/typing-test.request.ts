@@ -9,3 +9,9 @@ export interface TypingBatchRequest {
   device_id: string;
   inputs: { key: string; sequence: number; word_by_word: boolean }[];
 }
+
+export interface TypingDurationRequest {
+  type: 'duration';
+  device_id: string;
+  duration: number;
+}

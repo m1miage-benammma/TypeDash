@@ -8,6 +8,7 @@ from typing import Callable
 from app.api.responses.api import ApiResponse
 from app.api.requests.typing import CreateTypingTestRequest, GetTypingTestRequest
 from app.api.responses.typing import TypingTestResponse
+from app.models.enums import SessionStatus
 from app.models.errors import TypingTestError
 from app.services.device_service import DeviceService
 
@@ -96,6 +97,12 @@ class TypingService:
             return
         with self.test_repository.transaction() as storage:
             self._require_test(storage, test_id)
+
+    def set_duration(self, test: TypingTest, value: int) -> None:
+        self.require_owner(test)
+        if test.status != SessionStatus.READY or test.typed:
+            raise TypingTestError("not_configurable")
+        test.duration = self._duration(value)
 
     def persist(self, test: TypingTest, device_id: str) -> None:
         self.require_owner(test)

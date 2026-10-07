@@ -7,10 +7,11 @@ import { ApiResponse } from '../../../core/responses/api.response';
 import { TypingInput } from '../models/typing-input';
 import { TypingTest } from '../responses/typing-test.response';
 
-import { TypingBatchRequest } from '../requests/typing-test.request';
+import { TypingBatchRequest, TypingDurationRequest } from '../requests/typing-test.request';
 
 export interface TypingConnection {
   send(inputs: TypingInput[]): boolean;
+  setDuration(duration: number): boolean;
   close(): void;
 }
 
@@ -35,6 +36,7 @@ export class TypingStreamService {
     let replayTimer: ReturnType<typeof setTimeout> | undefined;
     let sentRevision = -1;
     let allowance = 32;
+    let desiredDuration: number | undefined;
     // Retain acknowledged keys too, until this connection ends: a server restart
     // can recover from the last database checkpoint without losing recent input.
     const history = new Map<number, TypingInput>();
@@ -43,6 +45,13 @@ export class TypingStreamService {
         key: input.key, sequence: input.sequence, word_by_word: input.wordByWord,
       })),
     } satisfies TypingBatchRequest));
+    const sendDuration = () => {
+      if (!ready || desiredDuration === undefined || socket.readyState !== WebSocket.OPEN) return false;
+      socket.send(JSON.stringify({
+        type: 'duration', device_id: deviceId, duration: desiredDuration,
+      } satisfies TypingDurationRequest));
+      return true;
+    };
     const pump = () => {
       if (!ready || closed || socket.readyState !== WebSocket.OPEN) return;
       const next = [...history.values()].filter(input => input.sequence > sentRevision)
@@ -94,6 +103,7 @@ export class TypingStreamService {
             allowance = 32;
             sentRevision = response.data.revision;
             ready = true;
+            sendDuration();
             pump();
             attempts = 0;
             availability(true);
@@ -102,6 +112,7 @@ export class TypingStreamService {
             ...snapshot, ...response.data,
             view: { ...snapshot.view, ...response.data.view },
           } : response.data;
+          if (response.data.duration === desiredDuration) desiredDuration = undefined;
           receive(snapshot);
           if (response.data.result) close();
         } catch { socket.close(); }
@@ -131,6 +142,10 @@ export class TypingStreamService {
         for (const input of inputs) history.set(input.sequence, input);
         pump();
         return true;
+      },
+      setDuration: duration => {
+        desiredDuration = duration;
+        return sendDuration();
       },
       close,
     };

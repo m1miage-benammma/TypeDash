@@ -95,3 +95,17 @@ test('compact first frames retain the already loaded prompt and options', contex
   assert.equal(frames[0].duration, 30);
   assert.deepEqual(frames[0].view.words, ['hello']);
 });
+
+test('duration changes reuse the current stream and survive connection startup', context => {
+  const initial = { id: 'test-id', text: 'same words', language: 'en', duration: 30,
+    revision: -1, view: { words: ['same words'], durations: [15, 30, 60] } };
+  const { socket, connection, frames } = connect(context, initial);
+  assert.equal(connection.setDuration(60), false);
+  socket.onopen();
+  socket.frame({ id: 'test-id', revision: -1, view: { active: false } });
+  assert.deepEqual(socket.sent[1], { type: 'duration', device_id: 'device-id', duration: 60 });
+  socket.frame({ id: 'test-id', revision: -1, duration: 60, remaining_seconds: 60,
+    view: { active: false, custom_duration: false } });
+  assert.equal(frames.at(-1).text, 'same words');
+  assert.equal(frames.at(-1).duration, 60);
+});

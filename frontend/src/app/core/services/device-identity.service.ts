@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { afterNextRender, inject, Injectable, signal } from '@angular/core';
-import { catchError, finalize, map, Observable, of, switchMap, tap, throwError, timeout } from 'rxjs';
+import { catchError, finalize, map, Observable, of, shareReplay, switchMap, tap, throwError, timeout } from 'rxjs';
 import { SessionAuthService } from './session-auth.service';
 
 import { environment } from '../../../environments/environment';
@@ -15,9 +15,11 @@ export class DeviceIdentityService {
   private readonly url = environment.apiUrl + '/devices';
   private readonly profileState = signal<DeviceProfile | null>(null);
   private readonly session = inject(SessionAuthService);
+  private profileRequest: Observable<DeviceProfile | null> | null = null;
 
   readonly profile = this.profileState.asReadonly();
   readonly loading = signal(false);
+  readonly initialized = signal(false);
 
   constructor() {
     afterNextRender(() => {
@@ -36,8 +38,9 @@ export class DeviceIdentityService {
   }
 
   loadProfile(): Observable<DeviceProfile | null> {
+    if (this.profileRequest) return this.profileRequest;
     this.loading.set(true);
-    return this.session.ensure().pipe(switchMap(deviceId =>
+    this.profileRequest = this.session.ensure().pipe(switchMap(deviceId =>
       this.unwrap(this.http.get<ApiResponse<DeviceProfile>>(`${this.url}/${deviceId}`))),
       tap(profile => this.profileState.set(profile)),
       catchError((error: HttpErrorResponse) => {
@@ -47,8 +50,14 @@ export class DeviceIdentityService {
         }
         return throwError(() => error);
       }),
-      finalize(() => this.loading.set(false)),
+      finalize(() => {
+        this.loading.set(false);
+        this.initialized.set(true);
+        this.profileRequest = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
     );
+    return this.profileRequest;
   }
 
   register(username: string): Observable<DeviceProfile> {

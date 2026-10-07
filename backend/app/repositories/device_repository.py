@@ -32,7 +32,6 @@ class PostgresDeviceRepository:
         with self.admin_connect() as connection:
             connection.execute(SCHEMA_SQL)
 
-
     @contextmanager
     def transaction(self, test_storage=None):
         try:
@@ -97,30 +96,28 @@ class PostgresDeviceSession:
              user.created_at, user.updated_at),
         )
 
-    def list_stats(self, device_id: str, limit: int = 30, offset: int = 0) -> list[TypingStat]:
+    def stats_snapshot(self, device_id: str, limit: int = 30,
+                       offset: int = 0) -> tuple[list[TypingStat], StatsSummary]:
         rows = self.connection.execute(
             """SELECT id, device_id, source_test_id, difficulty, language,
                duration_seconds, punctuation, numbers, wpm, accuracy,
                correct_characters, incorrect_characters, typed_characters,
-               completed_words, elapsed_seconds, finished_at, created_at
+               completed_words, elapsed_seconds, finished_at, created_at,
+               COUNT(*) OVER () AS sessions, MAX(wpm) OVER () AS best_wpm,
+               AVG(wpm) OVER () AS average_wpm,
+               AVG(accuracy) OVER () AS average_accuracy
                FROM typing_stats WHERE device_id = %s
                ORDER BY finished_at DESC, id DESC LIMIT %s OFFSET %s""",
             (UUID(device_id), limit, offset),
         ).fetchall()
-        return [self._stat_from_row(row) for row in rows]
-
-    def stats_summary(self, device_id: str) -> StatsSummary:
-        row = self.connection.execute(
-            """SELECT COUNT(*) AS sessions, COALESCE(MAX(wpm), 0) AS best_wpm,
-               COALESCE(AVG(wpm), 0) AS average_wpm,
-               COALESCE(AVG(accuracy), 0) AS average_accuracy
-               FROM typing_stats WHERE device_id = %s""", (UUID(device_id),),
-        ).fetchone()
-        return StatsSummary(
-            sessions=row["sessions"], best_wpm=float(row["best_wpm"]),
-            average_wpm=float(row["average_wpm"]),
-            average_accuracy=float(row["average_accuracy"]),
+        if not rows:
+            return [], StatsSummary(0, 0, 0, 0)
+        summary = StatsSummary(
+            sessions=rows[0]["sessions"], best_wpm=float(rows[0]["best_wpm"]),
+            average_wpm=float(rows[0]["average_wpm"]),
+            average_accuracy=float(rows[0]["average_accuracy"]),
         )
+        return [self._stat_from_row(row) for row in rows], summary
 
     def has_stat(self, test_id: str) -> bool:
         return self.connection.execute(
