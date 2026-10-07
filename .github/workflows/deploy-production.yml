@@ -5,6 +5,8 @@ run-name: "TypeDash production — ${{ github.sha }}"
 env:
   TYPEDASH_API_ORIGIN: https://typedash-gkbn.onrender.com
   TYPEDASH_SITE_ORIGIN: https://typedash.online
+  CLOUDFLARE_ACCOUNT_ID: ff6291f85c9079c9f77b5828ddd56242
+  CLOUDFLARE_PAGES_PROJECT: typedash
 permissions:
   contents: read
 concurrency:
@@ -31,22 +33,21 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           docker run --rm \
-            -e RENDER_API_KEY -e RENDER_SERVICE_ID -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID \
+            -e RENDER_API_KEY -e RENDER_SERVICE_ID -e CLOUDFLARE_API_TOKEN \
+            -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_PAGES_PROJECT \
             -e TYPEDASH_API_ORIGIN -e TYPEDASH_SITE_ORIGIN \
             -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
             python:3.12-alpine python /scripts/check-deployment-config.py
-      - name: Check Netlify project access in Docker
+      - name: Check Cloudflare Pages access in Docker
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          docker run --rm -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID \
+          docker run --rm -e CLOUDFLARE_API_TOKEN -e CLOUDFLARE_ACCOUNT_ID -e CLOUDFLARE_PAGES_PROJECT \
             -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
-            python:3.12-alpine python /scripts/check_netlify_access.py
+            python:3.12-alpine python /scripts/check-pages-access.py
       - name: Build production images
         run: docker compose -f docker-compose.ci.yml build backend frontend
       - name: Export verified frontend
@@ -57,10 +58,9 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          docker run --rm -e RENDER_API_KEY -e RENDER_SERVICE_ID -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID \
+          docker run --rm -e RENDER_API_KEY -e RENDER_SERVICE_ID -e CLOUDFLARE_API_TOKEN \
             -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
             -v "$GITHUB_WORKSPACE/frontend/dist/frontend/browser:/published:ro" \
             python:3.12-alpine python /scripts/check-public-artifact.py
@@ -93,7 +93,7 @@ jobs:
             -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
             python:3.12-alpine python /scripts/deploy-render.py
   deploy_frontend:
-    name: Publish verified frontend to Netlify
+    name: Publish verified frontend to Cloudflare Pages
     needs: [verify, deploy_backend]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -107,11 +107,21 @@ jobs:
           path: published
       - name: Publish production without rebuilding
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           DEPLOY_COMMIT: ${{ github.sha }}
         run: |
-          docker run --rm -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID -e DEPLOY_COMMIT \
+          docker build -f .github/docker/pages.Dockerfile -t typedash-pages-deploy .
+          docker run --rm -e CLOUDFLARE_API_TOKEN -e CLOUDFLARE_ACCOUNT_ID \
+            -v "$GITHUB_WORKSPACE/published:/workspace/published:ro" \
+            typedash-pages-deploy pages deploy /workspace/published \
+            --project-name "$CLOUDFLARE_PAGES_PROJECT" --branch main \
+            --commit-hash "$DEPLOY_COMMIT" --commit-dirty=false
+      - name: Confirm production deployment succeeded
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: |
+          docker run --rm -e CLOUDFLARE_API_TOKEN -e CLOUDFLARE_ACCOUNT_ID \
+            -e CLOUDFLARE_PAGES_PROJECT -e DEPLOY_COMMIT \
             -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
-            -v "$GITHUB_WORKSPACE/published:/published:ro" \
-            python:3.12-alpine python /scripts/deploy-netlify.py
+            python:3.12-alpine python /scripts/check-pages-deployment.py

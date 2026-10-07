@@ -26,3 +26,13 @@ class PreparedTestCache:
         if entry is None or entry[0] <= self.clock():
             return None
         return entry[1]
+
+    def peek(self, test_id):
+        with self.lock:
+            entry = self.entries.get(test_id)
+            if entry is None:
+                return None
+            if entry[0] <= self.clock():
+                self.entries.pop(test_id, None)
+                return None
+            return deepcopy(entry[1])

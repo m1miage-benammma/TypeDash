@@ -9,7 +9,7 @@ const frontend = fileURLToPath(new URL('../', import.meta.url));
 const publish = resolve(frontend, 'dist/frontend/browser');
 
 function publicOrigin(value, name) {
-  if (!value) throw new Error(`Set ${name} in the Netlify build environment.`);
+  if (!value) throw new Error(`Set ${name} in the Docker build environment.`);
   const url = new URL(value);
   if (url.protocol !== 'https:' || url.username || url.password
       || url.pathname !== '/' || url.search || url.hash) {
@@ -20,7 +20,7 @@ function publicOrigin(value, name) {
 
 // Only public addresses are read here. Never expose database credentials or keys.
 const apiOrigin = publicOrigin(process.env.TYPEDASH_API_ORIGIN, 'TYPEDASH_API_ORIGIN');
-// Canonicals describe the public domain, never the Netlify deployment hostname.
+// Canonicals describe the public domain, never a deployment hostname.
 const siteOrigin = 'https://typedash.online';
 if (apiOrigin === siteOrigin) throw new Error('API origin must point to the separately hosted FastAPI backend.');
 
@@ -33,7 +33,7 @@ if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
 const prerendered = JSON.parse(readFileSync(resolve(frontend, 'dist/frontend/prerendered-routes.json'), 'utf8'));
-const staticRewrites = prepareStaticPages(publish, Object.keys(prerendered.routes));
+prepareStaticPages(publish, Object.keys(prerendered.routes));
 
 const legacyPaths = {
   "/typing-test": "/",
@@ -50,26 +50,19 @@ const legacyPaths = {
   "/en/progress": "/progress",
   "/fr/progres": "/progress"
 };
-const siteHost = new URL(siteOrigin).hostname;
-// Combine host, scheme and legacy-path normalization in the same redirect.
-// Keep preview domains independent; normalize only production aliases.
-const aliases = [
-  `http://${siteHost}`, `http://www.${siteHost}`, `https://www.${siteHost}`,
-  'http://typedasha.netlify.app', 'https://typedasha.netlify.app',
-].filter(origin => origin !== siteOrigin);
+// Host and HTTPS normalization belong to zone redirect rules, not Pages assets.
 writeFileSync(resolve(publish, '_redirects'),
   [
-    ...aliases.flatMap(origin => [
-      ...Object.entries(legacyPaths).map(([from, to]) => `${origin}${from} ${siteOrigin}${to} 301!`),
-      `${origin}/* ${siteOrigin}/:splat 301!`,
-    ]),
-    `/api/* ${apiOrigin}/api/:splat 200!`,
-    ...Object.entries(legacyPaths).map(([from, to]) => `${from} ${siteOrigin}${to} 301!`),
-    ...staticRewrites,
-    '/* /index.csr.html 200',
+    ...Object.entries(legacyPaths).map(([from, to]) => `${from} ${siteOrigin}${to} 301`),
     '',
   ].join('\n'), 'utf8');
-// CLI uploads do not read the repository's netlify.toml: preserve its headers.
+// Static files stay on the free asset path; only API calls invoke the proxy.
+writeFileSync(resolve(publish, '_routes.json'), JSON.stringify({
+  version: 1, include: ['/api/*'], exclude: [],
+}), 'utf8');
+writeFileSync(resolve(publish, '_worker.js'),
+  readFileSync(resolve(frontend, 'cloudflare/worker.mjs'), 'utf8')
+    .replace('__TYPEDASH_API_ORIGIN__', JSON.stringify(apiOrigin)), 'utf8');
 writeFileSync(resolve(publish, '_headers'), securityHeaders(publish, apiOrigin), 'utf8');
 for (const file of ['robots.txt', 'sitemap.xml']) {
   const path = resolve(publish, file);

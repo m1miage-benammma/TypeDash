@@ -6,7 +6,7 @@
     "test": "node --test tests/*.test.mjs",
     "start": "ng serve",
     "build": "ng build",
-    "build:netlify": "node scripts/build-netlify.mjs"
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "dependencies": {
     "@angular/common": "^21.0.0",

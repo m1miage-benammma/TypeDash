@@ -37,24 +37,23 @@ class SecurityMiddleware:
                         raise HTTPException(403, "Request origin is not allowed.")
                 # Never trust arbitrary X-Forwarded-For / client-supplied headers.
                 peer = request.client.host if request.client else "unknown"
-                if not await run_in_threadpool(limits.allow, "http-global", 6000):
+                if not await run_in_threadpool(limits.allow_many, [
+                    ("http-global", 6000), ("ip:" + security.client_key(peer), 240),
+                ]):
                     raise HTTPException(429, "Too many requests.")
-                if not await run_in_threadpool(limits.allow, "ip:" + security.client_key(peer), 240):
-                    raise HTTPException(429, "Too many requests.")
+                checks = []
                 if scope["path"] != "/api/session":
                     device = security.verify(request.cookies.get(security.cookie_name), "session")
                     device_context.set(device)
-                    if not await run_in_threadpool(limits.allow, "device:" + device, 180):
-                        raise HTTPException(429, "Too many requests.")
+                    checks.append(("device:" + device, 180))
                 if request.method == "POST" and scope["path"] in {"/api/session", "/api/tests"}:
                     group = scope["path"]
-                    checks = [("create-global:" + group, 120),
-                              ("create-ip:" + group + security.client_key(peer), 30)]
+                    checks.extend([("create-global:" + group, 120),
+                                   ("create-ip:" + group + security.client_key(peer), 30)])
                     if device_context.get():
                         checks.append(("create-device:" + group + device_context.get(), 30))
-                    for key, maximum in checks:
-                        if not await run_in_threadpool(limits.allow, key, maximum):
-                            raise HTTPException(429, "Too many new sessions. Please wait.")
+                if checks and not await run_in_threadpool(limits.allow_many, checks):
+                    raise HTTPException(429, "Too many requests. Please wait.")
                 # Buffer a small bounded body before JSON parsing, including chunked requests.
                 body = bytearray()
                 while True:

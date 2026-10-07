@@ -22,3 +22,6 @@ AGENT_INSTRUCTIONS.md
 .DS_Store
 Thumbs.db
 DEPLOYMENT.md
+.wrangler/
+**/.dev.vars
+**/.dev.vars.*

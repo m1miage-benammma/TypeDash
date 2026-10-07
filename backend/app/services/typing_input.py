@@ -4,6 +4,7 @@ from app.models.enums import SessionStatus
 from app.models.errors import TypingTestError
 from app.models.typing_test import TypingTest
 from app.services.typing_engine import characters, elapsed, update_test
+from app.services.typing_text import aligned_characters, prompt_characters
 
 
 def apply_input(test: TypingTest, key: str, sequence: int,
@@ -16,11 +17,12 @@ def apply_input(test: TypingTest, key: str, sequence: int,
     if test.input_word_by_word != word_by_word:
         test.auto_inserted_separator = False
         test.input_word_by_word = word_by_word
-    actual = characters(test.typed)
-    expected = characters(test.text)
+    raw = characters(test.typed)
+    actual, _ = aligned_characters(test.text, test.typed, test.language)
+    expected = prompt_characters(test.text)
     value = test.typed
     if key == "Backspace":
-        value = "".join(actual[:-1])
+        value = "".join(raw[:-1])
         test.auto_inserted_separator = False
     elif len(characters(key)) == 1:
         if word_by_word and key == " " and test.auto_inserted_separator:
@@ -40,12 +42,14 @@ def apply_input(test: TypingTest, key: str, sequence: int,
                 test.auto_inserted_separator = False
             else:
                 value += key
-                if word_by_word and has_separator and len(characters(value)) >= word_end:
+                aligned, pending_ligature = aligned_characters(test.text, value, test.language)
+                if word_by_word and has_separator and len(aligned) >= word_end and not pending_ligature:
                     value += " "
                     test.auto_inserted_separator = True
                 else:
                     test.auto_inserted_separator = False
-    value = "".join(characters(value)[:len(expected)])
+    while len(aligned_characters(test.text, value, test.language)[0]) > len(expected):
+        value = "".join(characters(value)[:-1])
     if value != test.typed:
         update_test(test, value, sequence, False, now)
     else:

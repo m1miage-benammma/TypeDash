@@ -27,7 +27,7 @@ def create_router(service: TypingService) -> APIRouter:
 
     @router.post("/{test_id}/ticket", response_model=ApiResponse[StreamTicketResponse])
     def ticket(test_id: UUID, http: Request):
-        service.get(GetTypingTestRequest(test_id=test_id, device_id=UUID(device_context.get()), compact=True))
+        service.authorize(str(test_id))
         return ApiResponse(data=StreamTicketResponse(ticket=http.app.state.security.sign(
             device_context.get(), "stream", 30, str(test_id))))
 

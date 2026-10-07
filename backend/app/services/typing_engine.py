@@ -2,18 +2,13 @@ from dataclasses import asdict
 from datetime import datetime, timedelta
 import unicodedata
 
-import regex
-
 from app.models.typing_test import TypingTest
 from app.models.enums import SessionStatus
 from app.models.errors import TypingTestError
+from app.services.typing_text import aligned_characters, characters, prompt_characters
 
 IDLE_SECONDS = 1.2
 TRANSPORT_GRACE_SECONDS = 3.0
-
-
-def characters(text: str) -> list[str]:
-    return regex.findall(r"\X", unicodedata.normalize("NFC", text))
 
 
 def idle_remaining(test: TypingTest, now: datetime) -> float:
@@ -40,8 +35,8 @@ def elapsed(test: TypingTest, now: datetime) -> float:
 
 
 def score(test: TypingTest, now: datetime) -> dict:
-    expected = characters(test.text)
-    actual = characters(test.typed)
+    expected = prompt_characters(test.text)
+    actual, _ = aligned_characters(test.text, test.typed, test.language)
     correct = sum(
         expected_character == actual_character
         for expected_character, actual_character in zip(expected, actual)
@@ -73,7 +68,8 @@ def update_test(
         raise TypingTestError("expired")
 
     typed = unicodedata.normalize("NFC", typed)
-    if len(characters(typed)) > len(characters(test.text)):
+    actual, _ = aligned_characters(test.text, typed, test.language)
+    if len(actual) > len(prompt_characters(test.text)):
         raise TypingTestError("text_too_long")
 
     active_time = elapsed(test, now)
@@ -94,7 +90,12 @@ def update_test(
         test.last_activity_at = None
         test.status = SessionStatus.PAUSED
 
-    complete = bool(test.typed) and len(characters(test.typed)) == len(characters(test.text))
+    actual, pending_ligature = aligned_characters(test.text, test.typed, test.language)
+    complete = (
+        bool(test.typed)
+        and len(actual) == len(prompt_characters(test.text))
+        and not pending_ligature
+    )
     if finish and not complete:
         raise TypingTestError("still_running")
     _record_sample(test, now)
@@ -111,7 +112,7 @@ def snapshot(test: TypingTest, now: datetime) -> dict:
     }
 
 
-def _count_completed_words(expected: list[str], actual: list[str], text: str) -> int:
+def _count_completed_words(expected: tuple[str, ...], actual: list[str], text: str) -> int:
     cursor = 0
     completed = 0
     words = text.split(" ")
@@ -119,7 +120,7 @@ def _count_completed_words(expected: list[str], actual: list[str], text: str) ->
         end = cursor + len(characters(word))
         if end >= len(actual) and not (index == len(words) - 1 and end == len(actual)):
             break
-        if actual[cursor:end] == expected[cursor:end] and (
+        if actual[cursor:end] == list(expected[cursor:end]) and (
             end == len(expected) or actual[end] == " "
         ):
             completed += 1

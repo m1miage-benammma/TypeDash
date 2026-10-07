@@ -22,6 +22,10 @@ def _word_banks() -> dict[str, dict[str, tuple[str, ...]]]:
 
 
 class PromptService:
+    def __init__(self):
+        # Load public, immutable banks before the first typing request.
+        _word_banks()
+
     def generate(
         self,
         difficulty: Difficulty,

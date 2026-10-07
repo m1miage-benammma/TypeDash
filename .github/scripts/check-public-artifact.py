@@ -10,7 +10,7 @@ if not root.is_dir() or not (root / "index.html").is_file():
     sys.stderr.write("::error::Public build artifact is missing.\n")
     sys.exit(1)
 patterns = set()
-for name in ("RENDER_API_KEY", "RENDER_SERVICE_ID", "NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID"):
+for name in ("RENDER_API_KEY", "RENDER_SERVICE_ID", "CLOUDFLARE_API_TOKEN"):
     value = os.environ.get(name, "")
     if not value:
         sys.stderr.write("::error::Deployment secret configuration is incomplete.\n")

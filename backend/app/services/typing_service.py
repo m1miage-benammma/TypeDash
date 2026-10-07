@@ -87,7 +87,15 @@ class TypingService:
             storage.save(test)
             if request.device_id:
                 self._record_result(test, str(request.device_id), now.isoformat(), test_storage=storage)
-        return self._response(test, now, request.word_by_word)
+        return self._response(test, now, request.word_by_word, include_words=not request.compact)
+
+    def authorize(self, test_id: str) -> None:
+        test = self.live_tests.get(test_id) or self.prepared_tests.peek(test_id)
+        if test is not None:
+            self.require_owner(test)
+            return
+        with self.test_repository.transaction() as storage:
+            self._require_test(storage, test_id)
 
     def persist(self, test: TypingTest, device_id: str) -> None:
         self.require_owner(test)

@@ -20,8 +20,9 @@ COPY angular.json tsconfig.json tsconfig.app.json .postcssrc.json ./
 COPY src ./src
 COPY public ./public
 COPY scripts ./scripts
+COPY cloudflare ./cloudflare
 ARG TYPEDASH_API_ORIGIN=https://typedash-gkbn.onrender.com
-RUN TYPEDASH_API_ORIGIN="$TYPEDASH_API_ORIGIN" node scripts/build-netlify.mjs
+RUN TYPEDASH_API_ORIGIN="$TYPEDASH_API_ORIGIN" node scripts/build-pages.mjs
 
 FROM scratch AS artifact
 

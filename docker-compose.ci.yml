@@ -21,4 +21,5 @@ services:
     volumes:
       - ./frontend/tests:/app/tests:ro
       - ./frontend/scripts:/app/scripts:ro
+      - ./frontend/cloudflare:/app/cloudflare:ro
       - ./.github:/.github:ro

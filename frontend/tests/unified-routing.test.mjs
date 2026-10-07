@@ -37,7 +37,7 @@ test('the sitemap lists public canonical pages only', async () => {
 });
 
 test('legacy URLs redirect directly to unified paths without loops', async () => {
-  const script = await readFile(new URL('../scripts/build-netlify.mjs', import.meta.url), 'utf8');
+  const script = await readFile(new URL('../scripts/build-pages.mjs', import.meta.url), 'utf8');
   const legacy = JSON.parse(script.match(/const legacyPaths = (\{[\s\S]*?\});/)[1]);
   assert.equal(Object.keys(legacy).length, 13);
   for (const path of ['/typing-test', '/en/typing-test', '/fr/test-de-frappe']) {

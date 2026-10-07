@@ -1,10 +1,12 @@
 from app.models.enums import SessionStatus
 from app.models.typing_test import TypingTest
 from app.services.typing_engine import characters
+from app.services.typing_text import aligned_characters
 
 
 def _prompt_words(test: TypingTest, word_by_word: bool) -> list[dict]:
-    actual = characters(test.typed)
+    actual, pending_ligature = aligned_characters(test.text, test.typed, test.language)
+    caret = len(actual) - int(pending_ligature)
     words = []
     cursor = 0
     active_word = None
@@ -15,16 +17,16 @@ def _prompt_words(test: TypingTest, word_by_word: bool) -> list[dict]:
             values.append(" ")
         rendered = []
         for value in values:
-            entered = cursor < len(actual)
+            entered = cursor < caret
             rendered.append({
-                "index": cursor, "value": value, "current": cursor == len(actual),
+                "index": cursor, "value": value, "current": cursor == caret,
                 "correct": entered and actual[cursor] == value,
                 "incorrect": entered and actual[cursor] != value, "space": value == " ",
             })
             cursor += 1
         item = {"index": index, "chars": rendered}
         words.append(item)
-        if active_word is None and cursor > len(actual):
+        if active_word is None and cursor > caret:
             active_word = item
     return [active_word or words[-1]] if word_by_word and words else words
 

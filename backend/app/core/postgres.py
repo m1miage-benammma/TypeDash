@@ -46,9 +46,10 @@ class PostgresDatabase:
     @contextmanager
     def connection(self):
         with self.pool.connection() as connection:
-            connection.execute("SET LOCAL ROLE typedash_runtime")
-            connection.execute("SET LOCAL row_security = on")
-            connection.execute("SELECT set_config('typedash.device_id', %s, true)", (device_context.get(),))
+            with connection.pipeline():
+                connection.execute("SET LOCAL ROLE typedash_runtime")
+                connection.execute("SET LOCAL row_security = on")
+                connection.execute("SELECT set_config('typedash.device_id', %s, true)", (device_context.get(),))
             yield connection
 
     def close(self) -> None:

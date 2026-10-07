@@ -20,9 +20,9 @@ test('slashless pages retain their prerendered HTML without public index directo
   try {
     await mkdir(join(directory, 'typing-test'));
     await writeFile(join(directory, 'typing-test', 'index.html'), '<h1>Typing test</h1>');
-    const rewrites = prepareStaticPages(directory, ['/', '/typing-test']);
-    assert.deepEqual(rewrites, ['/typing-test /_pages/typing-test.html 200!']);
-    assert.equal(await readFile(join(directory, '_pages', 'typing-test.html'), 'utf8'), '<h1>Typing test</h1>');
+    const routes = prepareStaticPages(directory, ['/', '/typing-test']);
+    assert.deepEqual(routes, ['/typing-test']);
+    assert.equal(await readFile(join(directory, 'typing-test.html'), 'utf8'), '<h1>Typing test</h1>');
     assert.ok(!(await readdir(directory)).includes('typing-test'));
     assert.throws(() => prepareStaticPages(directory, ['/../outside']), /Unsupported/);
   } finally {
@@ -63,8 +63,8 @@ test('application pages use truthful WebPage data without unsupported app rating
   assert.ok(!('review' in graph[1]));
 });
 
-test('production domain cannot be overwritten by a Netlify deployment hostname', async () => {
-  const script = await readFile(new URL('../scripts/build-netlify.mjs', import.meta.url), 'utf8');
+test('production domain cannot be overwritten by a Pages deployment hostname', async () => {
+  const script = await readFile(new URL('../scripts/build-pages.mjs', import.meta.url), 'utf8');
   assert.match(script, /const siteOrigin = 'https:\/\/typedash.online'/);
   assert.doesNotMatch(script, /process.env.TYPEDASH_SITE_ORIGIN/);
   const workflow = await readFile(new URL('../../.github/workflows/deploy-production.yml', import.meta.url), 'utf8');

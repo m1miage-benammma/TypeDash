@@ -15,7 +15,7 @@ class Security:
         self.production = production
         self.cookie_name = "__Host-typedash-session" if production else "typedash-session"
         self.origins = {"https://typedash.online", "https://www.typedash.online",
-                        "https://typedasha.netlify.app"}
+                        "https://typedasha.netlify.app", "https://typedash-emt.pages.dev"}
         if not production:
             self.origins.update({"http://localhost:4200", "http://127.0.0.1:4200"})
 
