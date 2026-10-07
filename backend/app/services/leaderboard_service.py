@@ -10,8 +10,13 @@ class LeaderboardService:
     def get(self) -> ApiResponse[LeaderboardsResponse]:
         boards = self.repository.snapshot()
         def ranked(rows):
-            return [LeaderboardEntryResponse(rank=rank, username=row.username, wpm=row.wpm)
-                    for rank, row in enumerate(rows, 1)]
+            return [LeaderboardEntryResponse(
+                rank=row.rank,
+                username=row.username,
+                wpm=row.wpm,
+                difficulty=row.difficulty,
+                is_current=row.is_current,
+            ) for row in rows]
         return ApiResponse(data=LeaderboardsResponse(
             average=ranked(boards.average), top_speed=ranked(boards.top_speed),
         ))

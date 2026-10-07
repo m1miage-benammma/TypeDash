@@ -12,7 +12,18 @@ thead { color: var(--muted); font-size: 12px; }
 td, th { padding: 12px 4px; border-bottom: 1px solid var(--line); }
 tbody th { font-weight: 500; overflow-wrap: anywhere; }
 td:first-child, th:first-child { width: 36px; color: var(--muted); }
-td:last-child, th:last-child { text-align: right; }
-.first td:last-child { color: var(--accent); font-weight: 600; }
+.score { text-align: right; padding-right: 18px; }
+td:last-child, th:last-child { width: 84px; }
+.current { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.current > td, .current > th { border-block: 1px solid var(--accent); font-weight: 600; }
+.current > td:first-child { box-shadow: inset 3px 0 var(--accent); padding-left: 10px; }
+.current > td:last-child { box-shadow: inset -1px 0 var(--accent); }
+.you { color: var(--accent); font-size: 12px; margin-left: 6px; }
+.gap td { text-align: center; color: var(--muted); padding: 8px 4px; font-size: 20px; letter-spacing: 3px; border-bottom: 0; }
 tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
-@media (max-width: 700px) { .boards { grid-template-columns: 1fr; } article { padding: 20px; } }
+.current:last-child > td, .current:last-child > th { border-bottom: 1px solid var(--accent); }
+@media (max-width: 700px) {
+  .boards { grid-template-columns: 1fr; }
+  article { padding: 20px; }
+  .score { padding-right: 10px; }
+}

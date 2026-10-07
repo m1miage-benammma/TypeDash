@@ -10,6 +10,12 @@ class PostgresLeaderboardRepository(LeaderboardRepository):
         with self.database.connection() as connection:
             data = connection.execute("SELECT typedash_private.leaderboard() AS boards").fetchone()["boards"]
         return Leaderboards(**{
-            key: tuple(LeaderboardEntry(row["username"], float(row["wpm"])) for row in data[key])
+            key: tuple(LeaderboardEntry(
+                username=row["username"],
+                wpm=float(row["wpm"]),
+                difficulty=row["difficulty"],
+                rank=row["rank"],
+                is_current=row["is_current"],
+            ) for row in data[key])
             for key in ("average", "top_speed")
         })

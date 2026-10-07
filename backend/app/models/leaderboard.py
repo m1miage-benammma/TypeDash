@@ -5,6 +5,9 @@ from dataclasses import dataclass
 class LeaderboardEntry:
     username: str
     wpm: float
+    difficulty: str
+    rank: int
+    is_current: bool
 
 
 @dataclass(frozen=True)

@@ -14,10 +14,13 @@
           <h3>{{ board.title }}</h3>
           @if (board.rows.length) {
             <table>
-              <thead><tr><th scope="col">#</th><th scope="col">{{ t('leaderboardPlayer') }}</th><th scope="col">WPM</th></tr></thead>
+              <thead><tr><th scope="col">#</th><th scope="col">{{ t('leaderboardPlayer') }}</th><th class="score" scope="col">WPM</th><th scope="col">{{ t('leaderboardLevel') }}</th></tr></thead>
               <tbody>
-                @for (row of board.rows; track row.rank) {
-                  <tr [class.first]="row.rank === 1"><td>{{ row.rank }}</td><th scope="row">{{ row.username }}</th><td>{{ row.wpm | number:'1.1-1' }}</td></tr>
+                @for (row of board.rows; track row.rank; let index = $index) {
+                  @if (index > 0 && row.rank > board.rows[index - 1].rank + 1) {
+                    <tr class="gap"><td colspan="4"><span aria-hidden="true">…</span><span class="sr-only">{{ t('leaderboardHiddenRanks') }}</span></td></tr>
+                  }
+                  <tr [class.current]="row.is_current"><td>{{ row.rank }}</td><th scope="row">{{ row.username }} @if (row.is_current) { <span class="you">{{ t('leaderboardYou') }}</span> }</th><td class="score">{{ row.wpm | number:'1.1-1' }}</td><td>{{ t(row.difficulty) }}</td></tr>
                 }
               </tbody>
             </table>
