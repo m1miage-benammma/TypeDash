@@ -46,7 +46,7 @@ jobs:
         run: |
           docker run --rm -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID \
             -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
-            python:3.12-alpine python /scripts/check-netlify-access.py
+            python:3.12-alpine python /scripts/check_netlify_access.py
       - name: Build production images
         run: docker compose -f docker-compose.ci.yml build backend frontend
       - name: Export verified frontend
@@ -105,17 +105,13 @@ jobs:
         with:
           name: production-frontend-${{ github.sha }}
           path: published
-      - name: Build Netlify CLI container
-        run: docker build -f .github/docker/netlify.Dockerfile -t typedash-netlify:deploy .github/docker
       - name: Publish production without rebuilding
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          RELEASE_COMMIT: ${{ github.sha }}
-          CI: "true"
+          DEPLOY_COMMIT: ${{ github.sha }}
         run: |
-          docker run --rm -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID -e CI \
+          docker run --rm -e NETLIFY_AUTH_TOKEN -e NETLIFY_SITE_ID -e DEPLOY_COMMIT \
+            -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
             -v "$GITHUB_WORKSPACE/published:/published:ro" \
-            typedash-netlify:deploy deploy --prod --no-build \
-            --site "$NETLIFY_SITE_ID" --dir /published \
-            --message "TypeDash production $RELEASE_COMMIT"
+            python:3.12-alpine python /scripts/deploy-netlify.py

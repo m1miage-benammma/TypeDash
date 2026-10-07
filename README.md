@@ -81,7 +81,7 @@ Only the public API origin is a frontend build argument; pass `--build-arg TYPED
 
 Convenience wrappers provide the same commands: `./scripts/dev.ps1 up` in PowerShell or `sh scripts/dev.sh up` in a POSIX shell, with `down`, `logs`, `build` and `checks` actions.
 
-Backend tests and their dependencies have been removed as requested. CI builds production images on pushes and pull requests; it does not execute test suites. The manual **Deploy production** workflow verifies Docker builds, deploys the exact commit to Render, waits for live status and health, then publishes the preserved frontend artifact using a containerized Netlify CLI. A failed backend prevents frontend publication. Netlify Git builds are skipped to avoid publishing independently of this sequence.
+Backend tests and their dependencies have been removed as requested. CI builds production images on pushes and pull requests; it does not execute test suites. The manual **Deploy production** workflow verifies Docker builds, deploys the exact commit to Render, waits for live status and health, then uploads the preserved frontend artifact through the Netlify ZIP API inside Docker and confirms it is the published deploy. No local Netlify CLI installation or project linking is needed. A failed backend prevents frontend publication. Netlify Git builds are skipped to avoid publishing independently of this sequence.
 
 Deployment is one button: push to `main`, open **Actions → Deploy production → Run workflow**, select `main` and confirm. No input fields or local build commands are required. Build-only verification remains the separate Docker production builds workflow.
 

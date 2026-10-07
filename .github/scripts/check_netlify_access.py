@@ -1,4 +1,4 @@
-"""Read-only Netlify preflight; never log credentials or API response bodies."""
+"""Read-only Netlify preflight shared by the deployment uploader."""
 
 import json
 import os
