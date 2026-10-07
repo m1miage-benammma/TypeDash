@@ -32,6 +32,7 @@ services:
       TYPEDASH_DB_HOST: postgres
       TYPEDASH_DB_PORT: "5432"
       TYPEDASH_DB_SSL_MODE: disable
+      TYPEDASH_REDIS_URL: redis://redis:6379/0
       WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
@@ -39,6 +40,8 @@ services:
       - ./backend/app:/app/app
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks: [typedash]
     restart: unless-stopped
@@ -60,6 +63,18 @@ services:
       retries: 10
     networks: [typedash]
     restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [typedash]
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
 
 networks:
   typedash:

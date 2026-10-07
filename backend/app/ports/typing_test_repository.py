@@ -1,0 +1,13 @@
+from contextlib import AbstractContextManager
+from typing import Protocol
+from app.models.typing_test import TypingTest
+
+
+class TypingTestStorage(Protocol):
+    def find(self, test_id: str) -> TypingTest | None: ...
+    def save(self, test: TypingTest) -> None: ...
+    def delete_before(self, cutoff: str) -> None: ...
+
+
+class TypingTestRepository(Protocol):
+    def transaction(self) -> AbstractContextManager[TypingTestStorage]: ...

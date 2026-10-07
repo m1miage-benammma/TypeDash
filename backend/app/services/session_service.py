@@ -3,12 +3,13 @@ from app.api.responses.api import ApiResponse
 from app.api.responses.session import SessionResponse
 from app.models.errors import TypingTestError
 from app.services.typing_view import result_chart
+from app.ports.device_repository import DeviceRepository
 
 
 class SessionService:
     """Read durable, device-scoped session details; no live test dependency."""
 
-    def __init__(self, repository):
+    def __init__(self, repository: DeviceRepository):
         self.repository = repository
 
     def get(self, request: SessionRequest) -> ApiResponse[SessionResponse]:

@@ -17,10 +17,12 @@ from app.services.typing_service import TypingService
 class TypingStreamService:
     def __init__(self, typing: TypingService):
         self.typing = typing
+        self.connections: dict[str, str] = {}
 
     def _load(self, request):
         prepared = self.typing.prepared_tests.take(str(request.test_id))
         if prepared is not None:
+            self.typing.require_owner(prepared)
             return prepared
         with self.typing.test_repository.transaction() as storage:
             return self.typing._require_test(storage, str(request.test_id))
@@ -40,12 +42,14 @@ class TypingStreamService:
         )
 
     async def connect(self, socket: WebSocket, request: GetTypingTestRequest):
-        await socket.accept()
         test_id = str(request.test_id)
-        if not request.device_id or test_id in self.typing.live_tests:
+        if (not request.device_id or test_id in self.typing.live_tests
+                or len(self.connections) >= 32
+                or list(self.connections.values()).count(str(request.device_id)) >= 2):
             await socket.close(code=1008)
             return
         self.typing.live_tests[test_id] = None
+        self.connections[test_id] = str(request.device_id)
         test = None
         writer = None
         final_saved = False
@@ -55,6 +59,10 @@ class TypingStreamService:
         last_status = None
         word_by_word = request.word_by_word
         device_id = str(request.device_id)
+        window_started = monotonic()
+        input_count = 0
+        frame_count = 0
+        connected_at = monotonic()
         try:
             test = await asyncio.to_thread(self._load, request)
             checkpoint = (test.revision, test.status, test.active_seconds)
@@ -68,26 +76,35 @@ class TypingStreamService:
                        self.typing._response(test, utc_now(), word_by_word).model_dump(mode="json"))
             await socket.send_json(initial)
             while not test.result:
+                if monotonic() - connected_at > 1800:
+                    await socket.close(code=1000, reason="Session idle timeout.")
+                    break
                 try:
                     payload = await asyncio.wait_for(socket.receive_text(), timeout=0.1)
                 except asyncio.TimeoutError:
                     payload = None
                 now = utc_now()
                 if payload is not None:
-                    if len(payload) > 65536:
+                    if len(payload) > 8192:
                         await socket.close(code=1009)
                         break
                     batch = TypingBatchRequest.model_validate_json(payload)
                     if str(batch.device_id) != device_id:
                         raise TypingTestError("device_mismatch")
-                    candidate = deepcopy(test)
-                    for entry in batch.inputs:
-                        apply_input(candidate, entry.key, entry.sequence, entry.word_by_word, now)
-                    test = candidate
+                    if monotonic() - window_started >= 1:
+                        window_started, input_count, frame_count = monotonic(), 0, 0
+                    input_count += len(batch.inputs)
+                    frame_count += 1
+                    if input_count > 64 or frame_count > 40:
+                        await socket.close(code=1008, reason="Typing rate limit exceeded.")
+                        break
+                    # Bound work per frame and keep CPU-heavy scoring off the event loop.
+                    test = await asyncio.to_thread(self._apply_batch, test, batch, now)
                     word_by_word = batch.inputs[-1].word_by_word
                     self.typing.live_tests[test_id] = test
                 else:
-                    update_test(test, test.typed, test.revision, elapsed(test, now) >= test.duration, now)
+                    await asyncio.to_thread(update_test, test, test.typed, test.revision,
+                                            elapsed(test, now) >= test.duration, now)
                 if writer is not None and writer.done():
                     await writer
                     writer = None
@@ -119,3 +136,11 @@ class TypingStreamService:
                     await asyncio.to_thread(self._persist, deepcopy(test), device_id)
             finally:
                 self.typing.live_tests.pop(test_id, None)
+                self.connections.pop(test_id, None)
+
+    @staticmethod
+    def _apply_batch(test, batch, now):
+        candidate = deepcopy(test)
+        for entry in batch.inputs:
+            apply_input(candidate, entry.key, entry.sequence, entry.word_by_word, now)
+        return candidate

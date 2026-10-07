@@ -14,9 +14,10 @@ class PostgresTypingTestRepository:
 
     def __init__(self, database: PostgresDatabase):
         self.connect = database.connection
+        self.admin_connect = database.admin_connection
 
     def initialize(self) -> None:
-        with self.connect() as connection:
+        with self.admin_connect() as connection:
             connection.execute(SCHEMA_SQL)
 
 
@@ -40,13 +41,10 @@ class PostgresTypingTestSession:
         from psycopg.types.json import Jsonb
 
         self.connection.execute(
-            """INSERT INTO typing_tests (id, payload, created_at) VALUES (%s, %s, %s)
+            """INSERT INTO typing_tests (id, payload, created_at, owner_device_id) VALUES (%s, %s, %s, %s)
                ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload""",
-            (test.id, Jsonb(asdict(test)), test.created_at),
+            (test.id, Jsonb(asdict(test)), test.created_at, test.owner_device_id),
         )
-
-    def count(self) -> int:
-        return self.connection.execute("SELECT COUNT(*) AS count FROM typing_tests").fetchone()["count"]
 
     def delete_before(self, cutoff: str) -> None:
         self.connection.execute(

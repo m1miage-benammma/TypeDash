@@ -1,0 +1,18 @@
+:host { display: block; margin-top: 48px; }
+.leaderboards { color: var(--ink); }
+header { margin-bottom: 20px; }
+h2 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 500; }
+h2 td-icon { color: var(--accent); }
+header p, .empty { color: var(--muted); font-size: 14px; }
+.boards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+article { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 24px; }
+h3 { font-size: 18px; font-weight: 500; margin: 0 0 16px; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-variant-numeric: tabular-nums; }
+thead { color: var(--muted); font-size: 12px; }
+td, th { padding: 12px 4px; border-bottom: 1px solid var(--line); }
+tbody th { font-weight: 500; overflow-wrap: anywhere; }
+td:first-child, th:first-child { width: 36px; color: var(--muted); }
+td:last-child, th:last-child { text-align: right; }
+.first td:last-child { color: var(--accent); font-weight: 600; }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
+@media (max-width: 700px) { .boards { grid-template-columns: 1fr; } article { padding: 20px; } }

@@ -1,4 +1,5 @@
 import { prepareStaticPages } from './prepare-static-pages.mjs';
+import { securityHeaders } from './security-headers.mjs';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -69,14 +70,7 @@ writeFileSync(resolve(publish, '_redirects'),
     '',
   ].join('\n'), 'utf8');
 // CLI uploads do not read the repository's netlify.toml: preserve its headers.
-writeFileSync(resolve(publish, '_headers'), [
-  '/api/*',
-  '  Cache-Control: no-store',
-  '/*',
-  '  X-Content-Type-Options: nosniff',
-  '  Referrer-Policy: strict-origin-when-cross-origin',
-  '',
-].join('\n'), 'utf8');
+writeFileSync(resolve(publish, '_headers'), securityHeaders(publish, apiOrigin), 'utf8');
 for (const file of ['robots.txt', 'sitemap.xml']) {
   const path = resolve(publish, file);
   writeFileSync(path, readFileSync(path, 'utf8').replaceAll('https://typedash.online', siteOrigin), 'utf8');

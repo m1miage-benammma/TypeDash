@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
+from psycopg.errors import RaiseException
 
 from app.api.responses.api import ApiErrorDetail, ApiErrorResponse
 from app.models.errors import IdentityError, TypingTestError
@@ -10,6 +12,16 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(TypingTestError, typing_test_error)
     app.add_exception_handler(IdentityError, identity_error)
     app.add_exception_handler(RequestValidationError, validation_error)
+    app.add_exception_handler(HTTPException, http_error)
+    app.add_exception_handler(RaiseException, storage_limit_error)
+
+
+async def http_error(_request: Request, exc: HTTPException):
+    return _error_response(exc.status_code, "request_rejected", str(exc.detail))
+
+
+async def storage_limit_error(_request: Request, _exc: RaiseException):
+    return _error_response(503, "capacity_reached", "Storage capacity reached. Please try again later.")
 
 
 async def typing_test_error(_request: Request, exc: TypingTestError):

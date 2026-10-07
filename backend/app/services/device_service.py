@@ -13,11 +13,9 @@ from app.models.typing_stat import TypingStat
 from app.models.user import User
 from app.models.errors import IdentityError
 from app.repositories.errors import PersistenceConflict
-from app.repositories.device_repository import PostgresDeviceRepository
-from app.repositories.memory_device_repository import MemoryDeviceRepository
+from app.ports.device_repository import DeviceRepository
 
 USERNAME_PATTERN = re.compile(USERNAME_PATTERN_TEXT)
-DeviceRepository = MemoryDeviceRepository | PostgresDeviceRepository
 
 
 class DeviceService:

@@ -260,7 +260,7 @@ export class TypingGame {
   }
 
   private flushInputs(): void {
-    const batch = this.pendingInputs().filter(input => input.sequence > this.sentSequence).slice(0, 256);
+    const batch = this.pendingInputs().filter(input => input.sequence > this.sentSequence).slice(0, 32);
     if (batch.length && this.connection?.send(batch)) this.sentSequence = batch[batch.length - 1].sequence;
   }
 

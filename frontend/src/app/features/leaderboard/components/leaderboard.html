@@ -1,0 +1,31 @@
+<section class="leaderboards" aria-labelledby="leaderboard-title">
+  <header>
+    <h2 id="leaderboard-title"><td-icon name="trophy" /> {{ t('leaderboard') }}</h2>
+    <p>{{ t('leaderboardDescription') }}</p>
+  </header>
+  @if (failed()) {
+    <p role="status">{{ t('leaderboardUnavailable') }}</p>
+  } @else if (!data()) {
+    <p role="status">{{ t('leaderboardLoading') }}</p>
+  } @else {
+    <div class="boards">
+      @for (board of [{ title: t('leaderboardAverage'), rows: data()!.average }, { title: t('leaderboardTop'), rows: data()!.top_speed }]; track board.title) {
+        <article>
+          <h3>{{ board.title }}</h3>
+          @if (board.rows.length) {
+            <table>
+              <thead><tr><th scope="col">#</th><th scope="col">{{ t('leaderboardPlayer') }}</th><th scope="col">WPM</th></tr></thead>
+              <tbody>
+                @for (row of board.rows; track row.rank) {
+                  <tr [class.first]="row.rank === 1"><td>{{ row.rank }}</td><th scope="row">{{ row.username }}</th><td>{{ row.wpm | number:'1.1-1' }}</td></tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="empty">{{ t('leaderboardEmpty') }}</p>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>

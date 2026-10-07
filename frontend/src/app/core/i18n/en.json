@@ -1,4 +1,13 @@
 {
+  "leaderboard": "Leaderboard",
+  "leaderboardDescription": "Top 10 registered players · Completed sessions, all languages and durations.",
+  "leaderboardAverage": "Average WPM",
+  "leaderboardTop": "Top speed",
+  "leaderboardPlayer": "Player",
+  "leaderboardLoading": "Loading leaderboard…",
+  "leaderboardUnavailable": "Leaderboard temporarily unavailable.",
+  "leaderboardEmpty": "Finish a session and choose a username to join the leaderboard.",
+  "leaderboardPrivacy": "Your username, average WPM and best WPM will appear in the public leaderboard. Your session history remains private.",
   "practice": "Typing test",
   "progress": "My progress",
   "themeDark": "Switch to dark mode",

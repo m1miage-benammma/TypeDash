@@ -1,0 +1,24 @@
+name: typedash-ci
+services:
+  backend:
+    image: typedash-backend:verify
+    build:
+      context: ./backend
+      target: production
+  frontend:
+    image: typedash-frontend:verify
+    build:
+      context: ./frontend
+      target: production
+      args:
+        TYPEDASH_API_ORIGIN: ${TYPEDASH_API_ORIGIN:-https://typedash-gkbn.onrender.com}
+  frontend-checks:
+    profiles: [checks]
+    build:
+      context: ./frontend
+      target: development
+    command: ["node", "--test", "tests/*.test.mjs"]
+    volumes:
+      - ./frontend/tests:/app/tests:ro
+      - ./frontend/scripts:/app/scripts:ro
+      - ./.github:/.github:ro

@@ -3,6 +3,7 @@ from copy import deepcopy
 from threading import Lock
 from time import monotonic
 from uuid import uuid4
+from typing import Callable
 
 from app.api.responses.api import ApiResponse
 from app.api.requests.typing import CreateTypingTestRequest, GetTypingTestRequest
@@ -11,19 +12,16 @@ from app.models.errors import TypingTestError
 from app.services.device_service import DeviceService
 
 from app.core.clock import utc_now
+from app.core.security_context import device_context
 from app.models.typing_stat import TypingStat
 from app.models.typing_test import TypingTest
-from app.repositories.device_repository import PostgresDeviceRepository, PostgresDeviceSession
-from app.repositories.memory_device_repository import MemoryDeviceRepository
-from app.repositories.memory_typing_test_repository import MemoryTypingTestRepository
-from app.repositories.typing_test_repository import PostgresTypingTestRepository
+from app.ports.device_repository import DeviceRepository
+from app.ports.typing_test_repository import TypingTestRepository, TypingTestStorage
 from app.services.prompt_service import PromptService
 from app.services.prepared_test_cache import PreparedTestCache
 from app.services.typing_engine import elapsed, snapshot, update_test
 from app.services.typing_view import typing_view
 
-TypingTestRepository = MemoryTypingTestRepository | PostgresTypingTestRepository
-DeviceRepository = MemoryDeviceRepository | PostgresDeviceRepository
 
 
 class TypingService:
@@ -32,10 +30,12 @@ class TypingService:
         test_repository: TypingTestRepository,
         device_repository: DeviceRepository,
         prompts: PromptService,
+        capacity_check: Callable[[TypingTestStorage], bool] | None = None,
     ):
         self.test_repository = test_repository
         self.device_repository = device_repository
         self.prompts = prompts
+        self.capacity_check = capacity_check
         self.live_tests: dict[str, TypingTest | None] = {}
         self.prepared_tests = PreparedTestCache()
         self._cleanup_lock = Lock()
@@ -52,6 +52,7 @@ class TypingService:
                 request.punctuation, request.numbers,
             ),
             created_at=now.isoformat(),
+            owner_device_id=device_context.get() or None,
         )
         with self._cleanup_lock:
             cleanup_due = monotonic() >= self._next_cleanup
@@ -61,7 +62,7 @@ class TypingService:
             with self.test_repository.transaction() as storage:
                 if cleanup_due:
                     storage.delete_before((now - timedelta(days=1)).isoformat())
-                if isinstance(self.test_repository, MemoryTypingTestRepository) and storage.count() >= 2000:
+                if self.capacity_check and not self.capacity_check(storage):
                     raise TypingTestError("capacity_reached")
                 storage.save(test)
         except Exception:
@@ -78,6 +79,7 @@ class TypingService:
         now = utc_now()
         live = self.live_tests.get(str(request.test_id))
         if live is not None:
+            self.require_owner(live)
             return self._response(live, now, request.word_by_word, include_words=not request.compact)
         with self.test_repository.transaction() as storage:
             test = self._require_test(storage, str(request.test_id))
@@ -88,6 +90,7 @@ class TypingService:
         return self._response(test, now, request.word_by_word)
 
     def persist(self, test: TypingTest, device_id: str) -> None:
+        self.require_owner(test)
         # In Postgres, the test and durable statistics commit together. A final
         # frame is sent only after this transaction succeeds.
         with self.test_repository.transaction() as storage:
@@ -100,7 +103,13 @@ class TypingService:
         test = storage.find(test_id)
         if test is None:
             raise TypingTestError("not_found")
+        TypingService.require_owner(test)
         return test
+
+    @staticmethod
+    def require_owner(test: TypingTest) -> None:
+        if test.owner_device_id != (device_context.get() or None):
+            raise TypingTestError("not_found")
 
     @staticmethod
     def _response(test: TypingTest, now, word_by_word: bool = False, *, include_words: bool = True) -> ApiResponse[TypingTestResponse]:
@@ -132,10 +141,7 @@ class TypingService:
         created_at: str,
         *, test_storage=None,
     ) -> None:
-        if isinstance(self.device_repository, PostgresDeviceRepository) and hasattr(test_storage, "connection"):
-            self._save_result(PostgresDeviceSession(test_storage.connection), test, device_id, created_at)
-            return
-        with self.device_repository.transaction() as storage:
+        with self.device_repository.transaction(test_storage) as storage:
             self._save_result(storage, test, device_id, created_at)
 
     @staticmethod

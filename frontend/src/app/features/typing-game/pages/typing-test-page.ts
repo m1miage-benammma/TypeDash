@@ -3,13 +3,15 @@ import { I18nService } from '../../../core/services/i18n.service';
 import { PreferencesService } from '../../../core/services/preferences.service';
 
 import { TypingGame } from '../components/typing-game/typing-game';
+import { Leaderboard } from '../../leaderboard/components/leaderboard';
 
 @Component({
   selector: 'td-typing-test-page',
-  imports: [TypingGame],
+  imports: [TypingGame, Leaderboard],
   template: `
     @if (browser()) {
       <td-typing-game />
+      <td-leaderboard />
     } @else {
       <section class="min-h-[640px]">
         <header class="page-heading">

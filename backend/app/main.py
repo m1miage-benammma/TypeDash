@@ -1,9 +1,18 @@
 from contextlib import asynccontextmanager
 import logging
+import asyncio
+import secrets
+from contextlib import suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from app.api.routers.calculator import router as calculator_router
+from app.api.routers.auth import create_router as create_auth_router
+from app.api.security_middleware import SecurityMiddleware
+from app.core.security import Security
+from app.core.security_database import initialize_security, maintain_security
+from app.repositories.rate_limit_repository import RateLimits
+from app.repositories.redis_rate_limit_repository import RedisRateLimits
 
 from app.api.error_handlers import install_error_handlers
 from app.api.routers.devices import create_router as create_devices_router
@@ -18,6 +27,10 @@ from app.repositories.typing_test_repository import PostgresTypingTestRepository
 from app.services.device_service import DeviceService
 from app.services.prompt_service import PromptService
 from app.services.typing_service import TypingService
+from app.api.routers.leaderboard import create_router as create_leaderboard_router
+from app.repositories.leaderboard_repository import PostgresLeaderboardRepository
+from app.repositories.memory_leaderboard_repository import MemoryLeaderboardRepository
+from app.services.leaderboard_service import LeaderboardService
 
 
 database = None
@@ -30,26 +43,61 @@ else:
     device_repository = PostgresDeviceRepository(database)
 
 device_service = DeviceService(device_repository)
-typing_service = TypingService(test_repository, device_repository, PromptService())
+leaderboard_service = LeaderboardService(
+    MemoryLeaderboardRepository(device_repository) if database is None else PostgresLeaderboardRepository(database)
+)
+typing_service = TypingService(
+    test_repository, device_repository, PromptService(),
+    capacity_check=(lambda storage: storage.count() < 2000) if settings.storage == "memory" else None,
+)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    maintenance = None
+    redis_limits = (
+        RedisRateLimits(settings.redis_url.get_secret_value()) if settings.redis_url else None
+    )
     if settings.storage == "memory":
         logging.warning(
             "TypeDash uses volatile memory storage "
             "(explicit local development mode)."
         )
+        _app.state.security = Security(secrets.token_urlsafe(48), False)
+        _app.state.rate_limits = redis_limits or RateLimits()
     else:
         try:
             database.open()
             test_repository.initialize()
             device_repository.initialize()
+            key = initialize_security(database)
+            _app.state.security = Security(key, settings.runtime_environment == "production")
+            _app.state.rate_limits = redis_limits or RateLimits(database)
+            maintenance = asyncio.create_task(maintain_database())
             yield
         finally:
+            if maintenance:
+                maintenance.cancel()
+                with suppress(asyncio.CancelledError):
+                    await maintenance
             database.close()
+            if redis_limits:
+                redis_limits.close()
         return
-    yield
+    try:
+        yield
+    finally:
+        if redis_limits:
+            redis_limits.close()
+
+
+async def maintain_database():
+    while True:
+        try:
+            await asyncio.to_thread(maintain_security, database)
+        except Exception:
+            logging.error("Database retention maintenance failed.")
+        await asyncio.sleep(300)
 
 
 app = FastAPI(
@@ -63,17 +111,12 @@ app = FastAPI(
 )
 install_error_handlers(app)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-
-@app.middleware("http")
-async def prevent_api_caching(request, call_next):
-    response = await call_next(request)
-    if request.url.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "private, no-store"
-    return response
+app.add_middleware(SecurityMiddleware)
 
 
 app.include_router(calculator_router)
+app.include_router(create_auth_router(device_service))
 app.include_router(health_router, prefix="/api")
 app.include_router(create_typing_router(typing_service))
 app.include_router(create_devices_router(device_service))
+app.include_router(create_leaderboard_router(leaderboard_service))

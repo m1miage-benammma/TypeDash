@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     storage: Literal["postgres", "memory"] = "postgres"
     runtime_environment: Literal["development", "production"] = "development"
     database_url: SecretStr | None = None
+    redis_url: SecretStr | None = None
     db_ssl_mode: Literal["disable", "require", "verify-ca", "verify-full"] = "require"
     db_ssl_root_cert: str | None = None
     db_username: str | None = None

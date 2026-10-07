@@ -4,7 +4,12 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const source = (await readFile(new URL('../src/app/features/typing-game/services/typing-stream.service.ts', import.meta.url), 'utf8'))
-  .replace("import { Injectable } from '@angular/core';", 'const Injectable = () => target => target;')
+  .replace("import { inject, Injectable } from '@angular/core';", `
+    const Injectable = () => target => target;
+    const inject = () => ({ post: () => ({ subscribe: ({ next }) => {
+      next({ data: { ticket: 'short-lived-ticket' } }); return { unsubscribe() {} };
+    } }) });`)
+  .replace("import { HttpClient } from '@angular/common/http';", 'const HttpClient = {};')
   .replace(/import \{ environment \} from '[^']+';/, "const environment = { streamOrigin: 'https://backend.example' };");
 const compiled = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, experimentalDecorators: true },
@@ -38,6 +43,10 @@ test('initial connection is not reported as an interruption and uses direct secu
   const { socket, available } = connect(context);
   assert.equal(socket.url.protocol, 'wss:');
   assert.equal(socket.url.host, 'backend.example');
+  assert.equal(socket.url.searchParams.has('device_id'), false);
+  assert.equal(socket.url.searchParams.has('ticket'), false);
+  socket.onopen();
+  assert.deepEqual(socket.sent.shift(), { ticket: 'short-lived-ticket' });
   assert.deepEqual(available, []);
   context.mock.timers.tick(10001);
   assert.deepEqual(available, []);

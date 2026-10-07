@@ -1,6 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable, signal } from '@angular/core';
-import { catchError, finalize, map, Observable, of, tap, throwError, timeout } from 'rxjs';
+import { afterNextRender, inject, Injectable, signal } from '@angular/core';
+import { catchError, finalize, map, Observable, of, switchMap, tap, throwError, timeout } from 'rxjs';
+import { SessionAuthService } from './session-auth.service';
 
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../responses/api.response';
@@ -8,52 +9,36 @@ import { DeviceProfile } from '../responses/device-profile.response';
 
 import { UsernameRequest } from '../requests/username.request';
 
-const DEVICE_ID_KEY = 'typedash.device-id';
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 @Injectable({ providedIn: 'root' })
 export class DeviceIdentityService {
   private readonly http = inject(HttpClient);
   private readonly url = environment.apiUrl + '/devices';
   private readonly profileState = signal<DeviceProfile | null>(null);
-  private volatileDeviceId: string | null = null;
+  private readonly session = inject(SessionAuthService);
 
   readonly profile = this.profileState.asReadonly();
   readonly loading = signal(false);
 
   constructor() {
-    if (this.deviceId()) {
+    afterNextRender(() => {
       this.loadProfile().subscribe({ error: () => undefined });
-    }
+    });
   }
 
   deviceId(): string | null {
-    if (this.volatileDeviceId) return this.volatileDeviceId;
-    try {
-      const stored = localStorage.getItem(DEVICE_ID_KEY);
-      return stored && UUID_PATTERN.test(stored) ? stored : null;
-    } catch {
-      return null;
-    }
+    return this.session.deviceId();
   }
 
   ensureDeviceId(): string {
     const current = this.deviceId();
-    if (current) return current;
-    const created = crypto.randomUUID();
-    this.volatileDeviceId = created;
-    try { localStorage.setItem(DEVICE_ID_KEY, created); } catch { /* Keep it for this tab session. */ }
-    return created;
+    if (!current) throw new Error('Session authentication is not ready.');
+    return current;
   }
 
   loadProfile(): Observable<DeviceProfile | null> {
-    const deviceId = this.deviceId();
-    if (!deviceId) {
-      this.profileState.set(null);
-      return of(null);
-    }
     this.loading.set(true);
-    return this.unwrap(this.http.get<ApiResponse<DeviceProfile>>(`${this.url}/${deviceId}`)).pipe(
+    return this.session.ensure().pipe(switchMap(deviceId =>
+      this.unwrap(this.http.get<ApiResponse<DeviceProfile>>(`${this.url}/${deviceId}`))),
       tap(profile => this.profileState.set(profile)),
       catchError((error: HttpErrorResponse) => {
         if (error.status === 404) {

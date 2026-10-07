@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from app.api.responses.api import ApiResponse
 from app.api.requests.device import DeviceRequest, DeviceUsernameRequest
 from app.api.responses.device import DeviceProfileResponse
-from app.dependencies import get_device_request, get_username_request
+from app.dependencies import get_device_request, get_username_request, require_device
 from app.services.device_service import DeviceService
 from app.services.session_service import SessionService
 from app.api.requests.session import SessionRequest
@@ -21,6 +21,7 @@ def create_router(service: DeviceService) -> APIRouter:
 
     @router.get("/{device_id}/stats/{stat_id}", response_model=ApiResponse[SessionResponse])
     def get_session(device_id: UUID, stat_id: UUID) -> ApiResponse[SessionResponse]:
+        require_device(device_id)
         return sessions.get(SessionRequest(device_id=device_id, stat_id=stat_id))
 
     @router.get("/{device_id}", response_model=ApiResponse[DeviceProfileResponse])

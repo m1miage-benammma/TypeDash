@@ -26,17 +26,21 @@ class PostgresDeviceRepository:
 
         self.psycopg = psycopg
         self.connect = database.connection
+        self.admin_connect = database.admin_connection
 
     def initialize(self) -> None:
-        with self.connect() as connection:
+        with self.admin_connect() as connection:
             connection.execute(SCHEMA_SQL)
 
 
     @contextmanager
-    def transaction(self):
+    def transaction(self, test_storage=None):
         try:
-            with self.connect() as connection:
-                yield PostgresDeviceSession(connection)
+            if test_storage is not None:
+                yield PostgresDeviceSession(test_storage.connection)
+            else:
+                with self.connect() as connection:
+                    yield PostgresDeviceSession(connection)
         except self.psycopg.errors.UniqueViolation as error:
             raise PersistenceConflict(error.diag.constraint_name) from error
 
@@ -137,6 +141,11 @@ class PostgresDeviceSession:
     def save_stat(self, stat: TypingStat) -> None:
         from psycopg.types.json import Jsonb
 
+        self.connection.execute(
+            """DELETE FROM typing_stats WHERE id IN (
+               SELECT id FROM typing_stats WHERE device_id = %s
+               ORDER BY finished_at DESC, id DESC OFFSET 1999)""", (UUID(stat.device_id),),
+        )
         self.connection.execute(
             """INSERT INTO typing_stats (
                id, device_id, source_test_id, difficulty, language,

@@ -18,7 +18,7 @@ class MemoryDeviceRepository:
         self.lock = RLock()
 
     @contextmanager
-    def transaction(self):
+    def transaction(self, test_storage=None):
         with self.lock:
             backup = deepcopy((self.devices, self.users, self.stats))
             try:
@@ -65,6 +65,9 @@ class MemoryDeviceRepository:
                      if stat.id == stat_id and stat.device_id == device_id), None)
 
     def save_stat(self, stat: TypingStat) -> None:
+        if stat.source_test_id not in self.stats:
+            for old in self.list_stats(stat.device_id, limit=len(self.stats), offset=1999):
+                self.stats.pop(old.source_test_id, None)
         self.stats[stat.source_test_id] = stat
 
     def delete_stats(self, device_id: str) -> None:

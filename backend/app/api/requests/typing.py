@@ -34,4 +34,4 @@ class TypingKeyRequest(BaseModel):
 class TypingBatchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     device_id: UUID
-    inputs: list[TypingKeyRequest] = Field(min_length=1, max_length=256)
+    inputs: list[TypingKeyRequest] = Field(min_length=1, max_length=32)

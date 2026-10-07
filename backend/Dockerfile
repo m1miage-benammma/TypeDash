@@ -6,7 +6,8 @@ RUN pip install --no-cache-dir --prefix=/install \
     "pydantic-settings>=2.0,<3.0" \
     "psycopg[binary]>=3.2,<4.0" \
     "psycopg_pool==3.3.3" \
-    "regex>=2024.11.6"
+    "regex>=2024.11.6" \
+    "redis>=5.2,<6.0"
 
 FROM python:3.12-slim AS runtime
 
@@ -31,4 +32,4 @@ COPY --chown=appuser:appuser app ./app
 USER appuser
 ENV TYPEDASH_RUNTIME_ENVIRONMENT=production
 # Secrets are injected by the host; no .env file or credential is copied.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" --no-access-log"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\" --no-access-log --ws-max-size 8192 --ws-max-queue 8 --limit-concurrency 100"]

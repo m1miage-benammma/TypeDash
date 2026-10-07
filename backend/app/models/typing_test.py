@@ -23,3 +23,4 @@ class TypingTest:
     last_activity_at: str | None = None
     auto_inserted_separator: bool = False
     input_word_by_word: bool = False
+    owner_device_id: str | None = None

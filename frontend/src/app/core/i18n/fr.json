@@ -1,4 +1,13 @@
 {
+  "leaderboard": "Le classement",
+  "leaderboardDescription": "Top 10 des joueurs inscrits · Sessions terminées, toutes langues et durées.",
+  "leaderboardAverage": "WPM moyen",
+  "leaderboardTop": "Meilleure vitesse",
+  "leaderboardPlayer": "Joueur",
+  "leaderboardLoading": "Chargement du classement…",
+  "leaderboardUnavailable": "Classement temporairement indisponible.",
+  "leaderboardEmpty": "Terminez une session et choisissez un pseudo pour rejoindre le classement.",
+  "leaderboardPrivacy": "Votre pseudo, votre WPM moyen et votre meilleur WPM pourront apparaître dans le classement public. Votre historique reste privé.",
   "practice": "Test de frappe",
   "progress": "Mes progrès",
   "themeDark": "Activer le thème sombre",
