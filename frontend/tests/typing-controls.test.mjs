@@ -39,6 +39,7 @@ function controls() {
   game.durationError = { set() {} };
   game.customOpen = { set() {} };
   game.focusInput = () => {};
+  game.api = { remember() {} };
   game.durationFrames = [];
   game.connection = { setDuration: value => game.durationFrames.push(value) };
   game.loading = { set: value => { game.pending = value; } };
@@ -68,7 +69,8 @@ test('rapid controls merge with the latest selection rather than old confirmed s
   assert.equal(game.options().numbers, true);
   game.toggleOption('punctuation');
   assert.equal(game.options().punctuation, false);
-  assert.equal(game.requests.at(-1).duration, 60);
+  assert.equal(game.requests.at(-1).options.duration, 60);
+  assert.equal(game.requests.at(-1).forceNew, false);
 });
 
 test('language selection keeps pending timer and difficulty settings', () => {
@@ -76,8 +78,9 @@ test('language selection keeps pending timer and difficulty settings', () => {
   game.setDuration(30);
   game.setDifficulty({ target: { value: 'hard' } });
   game.preferences.language = () => 'fr';
-  game.prepare({ language: 'fr' });
+  game.prepare({ language: 'fr' }, false);
   assert.equal(game.options().language, 'fr');
   assert.equal(game.options().duration, 30);
   assert.equal(game.options().difficulty, 'hard');
+  assert.equal(game.requests.at(-1).forceNew, false);
 });

@@ -10,9 +10,11 @@ from app.api.routers.calculator import router as calculator_router
 from app.api.routers.auth import create_router as create_auth_router
 from app.api.security_middleware import SecurityMiddleware
 from app.core.security import Security
+from app.core.redis import RedisConnection
 from app.core.security_database import initialize_security, maintain_security
 from app.repositories.rate_limit_repository import RateLimits
 from app.repositories.redis_rate_limit_repository import RedisRateLimits
+from app.repositories.redis_cache import RedisPreparedTestCache, RedisResponseCache
 
 from app.api.error_handlers import install_error_handlers
 from app.api.routers.devices import create_router as create_devices_router
@@ -26,6 +28,7 @@ from app.repositories.memory_typing_test_repository import MemoryTypingTestRepos
 from app.repositories.typing_test_repository import PostgresTypingTestRepository
 from app.services.device_service import DeviceService
 from app.services.prompt_service import PromptService
+from app.services.prepared_test_cache import PreparedTestCache
 from app.services.typing_service import TypingService
 from app.api.routers.leaderboard import create_router as create_leaderboard_router
 from app.repositories.leaderboard_repository import PostgresLeaderboardRepository
@@ -34,6 +37,9 @@ from app.services.leaderboard_service import LeaderboardService
 
 
 database = None
+redis_connection = (
+    RedisConnection(settings.redis_url.get_secret_value()) if settings.redis_url else None
+)
 if settings.storage == "memory":
     test_repository = MemoryTypingTestRepository()
     device_repository = MemoryDeviceRepository()
@@ -44,20 +50,22 @@ else:
 
 device_service = DeviceService(device_repository)
 leaderboard_service = LeaderboardService(
-    MemoryLeaderboardRepository(device_repository) if database is None else PostgresLeaderboardRepository(database)
+    (MemoryLeaderboardRepository(device_repository) if database is None
+     else PostgresLeaderboardRepository(database)),
+    RedisResponseCache(redis_connection.client) if redis_connection else None,
 )
 typing_service = TypingService(
     test_repository, device_repository, PromptService(),
     capacity_check=(lambda storage: storage.count() < 2000) if settings.storage == "memory" else None,
+    prepared_tests=(RedisPreparedTestCache(redis_connection.client, PreparedTestCache())
+                    if redis_connection else None),
 )
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     maintenance = None
-    redis_limits = (
-        RedisRateLimits(settings.redis_url.get_secret_value()) if settings.redis_url else None
-    )
+    redis_limits = RedisRateLimits(redis_connection.client) if redis_connection else None
     if settings.storage == "memory":
         logging.warning(
             "TypeDash uses volatile memory storage "
@@ -81,14 +89,14 @@ async def lifespan(_app: FastAPI):
                 with suppress(asyncio.CancelledError):
                     await maintenance
             database.close()
-            if redis_limits:
-                redis_limits.close()
+            if redis_connection:
+                redis_connection.close()
         return
     try:
         yield
     finally:
-        if redis_limits:
-            redis_limits.close()
+        if redis_connection:
+            redis_connection.close()
 
 
 async def maintain_database():

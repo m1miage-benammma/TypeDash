@@ -107,7 +107,10 @@ export class TypingGame {
     return test ? previewWords(test, this.pendingInputs(), this.singleLineMode(), true) : [];
   });
 
-  private readonly prepareRequests = new Subject<PrepareTestRequest>();
+  private readonly prepareRequests = new Subject<{
+    options: PrepareTestRequest;
+    forceNew: boolean;
+  }>();
   private readonly pendingInputs = signal<TypingInput[]>([]);
   private connection: TypingConnection | null = null;
   private sentSequence = -1;
@@ -118,7 +121,8 @@ export class TypingGame {
 
   constructor() {
     this.prepareRequests.pipe(
-      switchMap(options => {
+      switchMap(request => {
+        const { options, forceNew } = request;
         this.restoreSubscription?.unsubscribe();
         this.loading.set(true);
         this.loadError.set(false);
@@ -131,8 +135,9 @@ export class TypingGame {
         // short coalescing window. Only the latest settings reach the server.
         const delay = this.preparationStarted ? 50 : 0;
         this.preparationStarted = true;
-        return timer(delay).pipe(switchMap(() => this.api.prepare(options)),
+        return timer(delay).pipe(switchMap(() => this.api.prepare(options, forceNew)),
           tap(test => {
+            const requestedDuration = Number(options.duration);
             this.sequence = test.revision;
             this.offline.set(false);
             this.pasteHint.set(false);
@@ -141,6 +146,10 @@ export class TypingGame {
             this.options.set(this.confirmedOptions(test));
             this.receivedAt.set(performance.now());
             this.connectStream(test);
+            if (Number.isInteger(requestedDuration) && requestedDuration >= 1
+                && requestedDuration <= 300 && requestedDuration !== test.duration) {
+              this.setDuration(requestedDuration);
+            }
             this.remember(test.id);
             writeLocal('typedash.options', this.requestOptions());
           }),
@@ -183,7 +192,7 @@ export class TypingGame {
         // Language changes supersede even an in-flight load or an active test.
         // switchMap cancels the old request; its words must never win this race.
         if (this.requestedLanguage !== language) {
-          this.prepare({ language });
+          this.prepare({ language }, false);
         }
       });
     });
@@ -207,7 +216,7 @@ export class TypingGame {
     return this.options();
   }
 
-  prepare(changes: PrepareTestRequest = {}): void {
+  prepare(changes: PrepareTestRequest = {}, forceNew = true): void {
     this.requestedLanguage = this.preferences.language();
     this.clearActive();
     const options = {
@@ -216,11 +225,11 @@ export class TypingGame {
     };
     this.options.set(options);
     this.loading.set(true);
-    this.prepareRequests.next(options);
+    this.prepareRequests.next({ options, forceNew });
   }
 
   toggleOption(option: 'punctuation' | 'numbers'): void {
-    this.prepare({ [option]: !this.options()[option] });
+    this.prepare({ [option]: !this.options()[option] }, false);
   }
 
   setDuration(duration: number): void {
@@ -233,6 +242,7 @@ export class TypingGame {
       remaining_seconds: duration,
       view: { ...test.view, custom_duration: !this.durations().includes(duration) },
     });
+    this.api.remember(this.test()!);
     this.receivedAt.set(performance.now());
     this.durationError.set(null);
     this.customOpen.set(false);
@@ -269,7 +279,7 @@ export class TypingGame {
   }
 
   setDifficulty(event: Event): void {
-    this.prepare({ difficulty: (event.target as HTMLSelectElement).value as Difficulty });
+    this.prepare({ difficulty: (event.target as HTMLSelectElement).value as Difficulty }, false);
   }
 
   setLineMode(singleLine: boolean): void {
@@ -315,6 +325,7 @@ export class TypingGame {
     const previouslyFinished = !!current.result;
     if (!current.started_at && test.started_at) this.analytics.sessionEvent('typing_session_start', test);
     this.test.set(test);
+    this.api.remember(test);
     this.receivedAt.set(performance.now());
     this.pendingInputs.update(pending => {
       if (!pending.length) return pending;
@@ -364,6 +375,12 @@ export class TypingGame {
   }
 
   private restoreOrPrepare(): void {
+    const cached = this.api.current();
+    if (cached) {
+      if (cached.language === this.preferences.language()) this.restore(cached);
+      else this.prepare({ language: this.preferences.language() }, false);
+      return;
+    }
     let active: { id: string } | null = null;
     try { active = JSON.parse(sessionStorage.getItem('typedash.active') || 'null'); }
     catch { this.clearActive(); }
@@ -376,24 +393,28 @@ export class TypingGame {
     ).subscribe({
       next: test => {
         if (test.language !== this.preferences.language()) {
-          this.prepare();
+          this.prepare({ language: this.preferences.language() }, false);
           return;
         }
-        this.sequence = test.revision;
-        this.test.set(test);
-        this.options.set(this.confirmedOptions(test));
-        this.receivedAt.set(performance.now());
-        this.connectStream(test);
-        this.loading.set(false);
-        if (test.result) {
-          this.clearActive();
-          this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            error: () => undefined,
-          });
-        }
-        if (!this.isMobile()) setTimeout(() => this.focusInput());
+        this.restore(test);
       },
       error: () => { this.clearActive(); this.prepare(); },
     });
+  }
+
+  private restore(test: TypingTest): void {
+    this.sequence = test.revision;
+    this.test.set(test);
+    this.options.set(this.confirmedOptions(test));
+    this.receivedAt.set(performance.now());
+    this.connectStream(test);
+    this.loading.set(false);
+    if (test.result) {
+      this.clearActive();
+      this.identity.loadProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        error: () => undefined,
+      });
+    } else this.remember(test.id);
+    if (!this.isMobile()) setTimeout(() => this.focusInput());
   }
 }

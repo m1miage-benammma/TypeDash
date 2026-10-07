@@ -17,11 +17,8 @@ class RedisRateLimits(RateLimiter):
         return count <= tonumber(ARGV[1]) and 1 or 0
     """
 
-    def __init__(self, url: str):
-        self.client = Redis.from_url(
-            url, socket_connect_timeout=1, socket_timeout=1,
-            max_connections=32, health_check_interval=30,
-        )
+    def __init__(self, client: Redis):
+        self.client = client
         self.script = self.client.register_script(self._SCRIPT)
 
     def allow(self, key: str, limit: int, seconds: int = 60, cost: int = 1) -> bool:
@@ -35,6 +32,3 @@ class RedisRateLimits(RateLimiter):
                 return all(pipeline.execute())
         except RedisError:
             return False
-
-    def close(self):
-        self.client.close()

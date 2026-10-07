@@ -32,13 +32,14 @@ class TypingService:
         device_repository: DeviceRepository,
         prompts: PromptService,
         capacity_check: Callable[[TypingTestStorage], bool] | None = None,
+        prepared_tests=None,
     ):
         self.test_repository = test_repository
         self.device_repository = device_repository
         self.prompts = prompts
         self.capacity_check = capacity_check
         self.live_tests: dict[str, TypingTest | None] = {}
-        self.prepared_tests = PreparedTestCache()
+        self.prepared_tests = prepared_tests or PreparedTestCache()
         self._cleanup_lock = Lock()
         self._next_cleanup = 0.0
 
