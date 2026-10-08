@@ -38,14 +38,18 @@ class SecurityMiddleware:
                 # Never trust arbitrary X-Forwarded-For / client-supplied headers.
                 peer = request.client.host if request.client else "unknown"
                 if not await run_in_threadpool(limits.allow_many, [
-                    ("http-global", 6000), ("ip:" + security.client_key(peer), 240),
+                    ("http-global", 6000), ("ip:" + security.client_key(peer), 480),
                 ]):
                     raise HTTPException(429, "Too many requests.")
                 checks = []
                 if scope["path"] != "/api/session":
                     device = security.verify(request.cookies.get(security.cookie_name), "session")
                     device_context.set(device)
-                    checks.append(("device:" + device, 180))
+                    # Key batches arrive ~2/s; give them a separate bucket so typing never starves reads.
+                    if scope["path"].endswith("/inputs"):
+                        checks.append(("device-input:" + device, 300))
+                    else:
+                        checks.append(("device:" + device, 180))
                 if request.method == "POST" and scope["path"] in {"/api/session", "/api/tests"}:
                     group = scope["path"]
                     checks.extend([("create-global:" + group, 120),

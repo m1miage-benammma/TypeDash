@@ -1,7 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
-import { StreamTicket } from '../../../core/responses/session-identity.response';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse } from '../../../core/responses/api.response';
 import { TypingInput } from '../models/typing-input';
@@ -15,137 +14,109 @@ export interface TypingConnection {
   close(): void;
 }
 
+const BATCH_INTERVAL_MS = 400;
+
+/** Plain HTTP transport: key batches are POSTed at most every 400 ms; no persistent connection. */
 @Injectable({ providedIn: 'root' })
 export class TypingStreamService {
   private readonly http = inject(HttpClient);
   connect(id: string, deviceId: string, wordByWord: boolean,
     receive: (test: TypingTest) => void, availability: (ready: boolean) => void,
     initial?: TypingTest): TypingConnection {
-    const url = new URL(`/api/tests/${id}/stream`, environment.streamOrigin || location.origin);
-    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.searchParams.set('word_by_word', String(wordByWord));
-    if (initial) url.searchParams.set('compact', 'true');
-    let socket: WebSocket;
+    const url = `${environment.apiUrl}/tests/${id}`;
     let closed = false;
-    let ready = false;
+    let busy = false;
+    let online = true;
     let attempts = 0;
-    let reconnect: ReturnType<typeof setTimeout> | undefined;
-    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    let acknowledged = initial?.revision ?? -1;
     let snapshot: TypingTest | undefined = initial;
-    let authentication: Subscription | undefined;
-    let replayTimer: ReturnType<typeof setTimeout> | undefined;
-    let sentRevision = -1;
-    let allowance = 32;
     let desiredDuration: number | undefined;
-    // Retain acknowledged keys too, until this connection ends: a server restart
-    // can recover from the last database checkpoint without losing recent input.
+    let lastSent = 0;
+    let needsResync = false;
+    let request: Subscription | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let expiry: ReturnType<typeof setTimeout> | undefined;
+    // Keep acknowledged keys until the connection ends so a resync can replay them.
     const history = new Map<number, TypingInput>();
-    const sendFrame = (inputs: TypingInput[]) => socket.send(JSON.stringify({
-      device_id: deviceId, inputs: inputs.map(input => ({
-        key: input.key, sequence: input.sequence, word_by_word: input.wordByWord,
-      })),
-    } satisfies TypingBatchRequest));
-    const sendDuration = () => {
-      if (!ready || desiredDuration === undefined || socket.readyState !== WebSocket.OPEN) return false;
-      socket.send(JSON.stringify({
-        type: 'duration', device_id: deviceId, duration: desiredDuration,
-      } satisfies TypingDurationRequest));
-      return true;
+
+    const schedule = (delay: number) => {
+      if (closed || timer !== undefined) return;
+      timer = setTimeout(() => { timer = undefined; flush(); }, Math.max(0, delay));
     };
-    const pump = () => {
-      if (!ready || closed || socket.readyState !== WebSocket.OPEN) return;
-      const next = [...history.values()].filter(input => input.sequence > sentRevision)
-        .sort((a, b) => a.sequence - b.sequence).slice(0, allowance);
-      if (!next.length) return;
-      sendFrame(next);
-      sentRevision = next[next.length - 1].sequence;
-      allowance -= next.length;
-      replayTimer ??= setTimeout(() => {
-        replayTimer = undefined;
-        allowance = 32;
-        pump();
-      }, 1100);
+    const armExpiry = () => {
+      clearTimeout(expiry);
+      if (!snapshot || snapshot.status !== 'running' || snapshot.result) return;
+      // The server owns the clock: ask once for the verdict when time should be up.
+      expiry = setTimeout(() => { needsResync = true; flush(); }, snapshot.remaining_seconds * 1000 + 300);
     };
-    const armWatchdog = (current: WebSocket, timeout = 10000) => {
-      clearTimeout(watchdog);
-      watchdog = setTimeout(() => {
-        if (!closed && socket === current) current.close();
-      }, timeout);
+    const accept = (response: ApiResponse<TypingTest>) => {
+      busy = false;
+      attempts = 0;
+      needsResync = false;
+      if (!response.data || response.data.id !== id) return fail();
+      if (!online) { online = true; availability(true); }
+      snapshot = snapshot ? {
+        ...snapshot, ...response.data,
+        view: { ...snapshot.view, ...response.data.view },
+      } : response.data;
+      acknowledged = Math.max(acknowledged, snapshot.revision);
+      if (snapshot.duration === desiredDuration) desiredDuration = undefined;
+      for (const sequence of history.keys()) if (sequence <= acknowledged) history.delete(sequence);
+      receive(snapshot);
+      if (snapshot.result) return close();
+      armExpiry();
+      if (history.size || desiredDuration !== undefined) schedule(BATCH_INTERVAL_MS - (Date.now() - lastSent));
     };
-    const open = () => {
+    const fail = () => {
+      busy = false;
       if (closed) return;
-      ready = false;
-      authentication = this.http.post<ApiResponse<StreamTicket>>(
-        `${environment.apiUrl}/tests/${id}/ticket`, {},
-      ).subscribe({ next: response => openSocket(response.data.ticket), error: () => {
-        if (closed) return;
-        availability(false);
-        reconnect = setTimeout(open, Math.min(1000 * 2 ** attempts++, 10000));
-      } });
+      // Any failure resynchronises from the stored state before sending more keys.
+      needsResync = true;
+      if (online) { online = false; availability(false); }
+      schedule(Math.min(500 * 2 ** attempts++, 5000));
     };
-    const openSocket = (ticket: string) => {
-      if (closed) return;
-      socket = new WebSocket(url);
-      const current = socket;
-      current.onopen = () => current.send(JSON.stringify({ ticket }));
-      // A first handshake/database load can take longer than a heartbeat.
-      // Connecting is not an interruption: report failure only on a real close.
-      armWatchdog(current, 60000);
-      current.onmessage = event => {
-        if (closed || socket !== current) return;
-        try {
-          const response = JSON.parse(event.data) as ApiResponse<TypingTest>;
-          if (!response.data || response.data.id !== id) { socket.close(); return; }
-          armWatchdog(current);
-          if (!ready) {
-            clearTimeout(replayTimer);
-            replayTimer = undefined;
-            allowance = 32;
-            sentRevision = response.data.revision;
-            ready = true;
-            sendDuration();
-            pump();
-            attempts = 0;
-            availability(true);
-          }
-          snapshot = snapshot ? {
-            ...snapshot, ...response.data,
-            view: { ...snapshot.view, ...response.data.view },
-          } : response.data;
-          if (response.data.duration === desiredDuration) desiredDuration = undefined;
-          receive(snapshot);
-          if (response.data.result) close();
-        } catch { socket.close(); }
-      };
-      current.onerror = () => current.close();
-      current.onclose = () => {
-        if (closed || socket !== current) return;
-        clearTimeout(watchdog);
-        ready = false;
-        availability(false);
-        reconnect = setTimeout(open, Math.min(500 * 2 ** attempts++, 5000));
-      };
+    const flush = () => {
+      if (closed || busy) return;
+      const next = [...history.values()].filter(input => input.sequence > acknowledged)
+        .sort((a, b) => a.sequence - b.sequence).slice(0, 32);
+      lastSent = Date.now();
+      if (needsResync) {
+        busy = true;
+        request = this.http.get<ApiResponse<TypingTest>>(url, {
+          params: { word_by_word: String(wordByWord), compact: 'true' },
+        }).subscribe({ next: accept, error: fail });
+      } else if (desiredDuration !== undefined) {
+        busy = true;
+        request = this.http.put<ApiResponse<TypingTest>>(url + '/duration', {
+          type: 'duration', device_id: deviceId, duration: desiredDuration,
+        } satisfies TypingDurationRequest).subscribe({ next: accept, error: fail });
+      } else if (next.length) {
+        busy = true;
+        request = this.http.post<ApiResponse<TypingTest>>(url + '/inputs', {
+          device_id: deviceId, inputs: next.map(input => ({
+            key: input.key, sequence: input.sequence, word_by_word: input.wordByWord,
+          })),
+        } satisfies TypingBatchRequest).subscribe({ next: accept, error: fail });
+      }
     };
     const close = () => {
       closed = true;
-      ready = false;
-      clearTimeout(reconnect);
-      clearTimeout(watchdog);
-      clearTimeout(replayTimer);
-      authentication?.unsubscribe();
-      socket?.close();
+      clearTimeout(timer);
+      clearTimeout(expiry);
+      request?.unsubscribe();
     };
-    open();
+    armExpiry();
     return {
       send: inputs => {
-        if (!ready || socket.readyState !== WebSocket.OPEN) return false;
+        if (closed) return false;
         for (const input of inputs) history.set(input.sequence, input);
-        pump();
+        schedule(BATCH_INTERVAL_MS - (Date.now() - lastSent));
         return true;
       },
       setDuration: duration => {
         desiredDuration = duration;
-        return sendDuration();
+        schedule(0);
+        return true;
       },
       close,
     };

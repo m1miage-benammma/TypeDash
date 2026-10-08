@@ -18,8 +18,6 @@ export function securityHeaders(directory, apiOrigin) {
     }
   };
   scan(directory);
-  const websocket = new URL(apiOrigin);
-  websocket.protocol = 'wss:';
   const csp = [
     "default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
     "form-action 'self'", "frame-src 'none'",
@@ -27,7 +25,7 @@ export function securityHeaders(directory, apiOrigin) {
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'", "font-src 'self'",
     "img-src 'self' data: https://*.google-analytics.com https://www.googletagmanager.com",
-    `connect-src 'self' ${websocket.origin} https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com`,
+    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com`,
     'upgrade-insecure-requests',
   ].join('; ');
   return [

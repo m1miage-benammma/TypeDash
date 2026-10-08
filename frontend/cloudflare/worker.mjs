@@ -26,7 +26,6 @@ export default {
         signal: AbortSignal.timeout(60000),
         cf: { cacheTtl: 0, cacheEverything: false },
       });
-      if (upstream.status === 101) return upstream;
       const response = new Response(upstream.body, upstream);
       response.headers.set('Cache-Control', 'private, no-store');
       // Streaming preserves multiple Set-Cookie headers and bounded memory.

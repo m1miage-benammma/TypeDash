@@ -25,7 +25,7 @@ The application uses an Angular frontend and a FastAPI backend with domain model
 ## Features
 
 - Real-time character feedback with distinct correct and incorrect states
-- Persistent WebSocket connection for immediate typing feedback and timer updates
+- Lightweight HTTP typing transport: key batches every 400 ms, no persistent connection
 - Server-calculated statistics shown only after a session finishes
 - Native mobile keyboard input, including accented characters and IME composition
 - English and French interfaces sharing the same URLs
@@ -42,13 +42,13 @@ The application uses an Angular frontend and a FastAPI backend with domain model
 
 ## Device identity and data
 
-TypeDash creates a device identity on the server. Access requires a signed, HttpOnly session cookie (`Secure` and `SameSite=Strict` in production). A device UUID is a public identifier, never an authentication credential. WebSockets authenticate with a 30-second ticket bound to one device and one test, sent in the first frame rather than the URL.
+TypeDash creates a device identity on the server. Access requires a signed, HttpOnly session cookie (`Secure` and `SameSite=Strict` in production). A device UUID is a public identifier, never an authentication credential.
 
 The cookie lasts 180 days and is renewed when the browser initializes its session. Clearing cookies loses access to that browser's history. Legacy UUID-only identities are not automatically adopted: their ownership cannot be verified. Existing records are preserved, but users receive a new secure identity after this migration.
 
 All application SQL transactions use the non-owner `typedash_runtime` role with `NOBYPASSRLS` and a transaction-local device context. Startup installs the schema and policies with the schema-owner connection, then validates the runtime role. A server signing key is generated once in `typedash_private.secrets`; it is shared across restarts/workers and is never exposed to the frontend or runtime SQL role. Schema initialization and the bounded retention job use the privileged connection. Cross-device ranking is restricted to one fixed, read-only `SECURITY DEFINER` function returning at most ten public usernames/scores per board, with a fixed search path and no public execute permission; private tables retain their ownership policies. Keep database credentials server-side.
 
-Limits use atomic Redis counters when configured, otherwise atomic PostgreSQL counters, shared across workers. Requests are limited globally, by the peer address supplied by the ASGI server, and by authenticated device. Client-supplied forwarding headers are ignored by application code; configure Uvicorn's trusted proxy addresses only for the actual hosting proxy. WebSocket input is bounded to 32 keys per frame, 64 keys/second and two active streams per device per worker. Frames are limited to 8 KiB and HTTP bodies to 16 KiB.
+Limits use atomic Redis counters when configured, otherwise atomic PostgreSQL counters, shared across workers. Requests are limited globally, by the peer address supplied by the ASGI server, and by authenticated device. Client-supplied forwarding headers are ignored by application code; configure Uvicorn's trusted proxy addresses only for the actual hosting proxy. Typing input is bounded to 32 keys per request, and HTTP bodies are limited to 16 KiB.
 
 Storage ceilings are 10,000 temporary tests, 10,000 devices and 100,000 saved sessions across the application. The newest 2,000 saved sessions per device are retained. Temporary tests expire after 24 hours; a background job removes them and expired rate counters every five minutes. A full global quota rejects new records rather than silently growing the database; review quotas and capacity before increasing them. These controls reduce abuse but are not a network-level DDoS service.
 

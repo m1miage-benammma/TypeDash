@@ -6,7 +6,9 @@ from uuid import uuid4
 from typing import Callable
 
 from app.api.responses.api import ApiResponse
-from app.api.requests.typing import CreateTypingTestRequest, GetTypingTestRequest
+from app.api.requests.typing import (
+    CreateTypingTestRequest, GetTypingTestRequest, TypingBatchRequest, TypingDurationRequest,
+)
 from app.api.responses.typing import TypingTestResponse
 from app.models.enums import SessionStatus
 from app.models.errors import TypingTestError
@@ -19,8 +21,8 @@ from app.models.typing_test import TypingTest
 from app.ports.device_repository import DeviceRepository
 from app.ports.typing_test_repository import TypingTestRepository, TypingTestStorage
 from app.services.prompt_service import PromptService
-from app.services.prepared_test_cache import PreparedTestCache
 from app.services.typing_engine import elapsed, snapshot, update_test
+from app.services.typing_input import apply_input
 from app.services.typing_view import typing_view
 
 
@@ -32,14 +34,11 @@ class TypingService:
         device_repository: DeviceRepository,
         prompts: PromptService,
         capacity_check: Callable[[TypingTestStorage], bool] | None = None,
-        prepared_tests=None,
     ):
         self.test_repository = test_repository
         self.device_repository = device_repository
         self.prompts = prompts
         self.capacity_check = capacity_check
-        self.live_tests: dict[str, TypingTest | None] = {}
-        self.prepared_tests = prepared_tests or PreparedTestCache()
         self._cleanup_lock = Lock()
         self._next_cleanup = 0.0
 
@@ -72,47 +71,56 @@ class TypingService:
                 with self._cleanup_lock:
                     self._next_cleanup = 0.0
             raise
-        # Persistence remains mandatory before responding. The following
-        # WebSocket need not open another DB connection to read this same row.
-        self.prepared_tests.put(test)
         return self._response(test, now, request.word_by_word, include_words=not request.compact)
 
     def get(self, request: GetTypingTestRequest) -> ApiResponse[TypingTestResponse]:
         now = utc_now()
-        live = self.live_tests.get(str(request.test_id))
-        if live is not None:
-            self.require_owner(live)
-            return self._response(live, now, request.word_by_word, include_words=not request.compact)
         with self.test_repository.transaction() as storage:
             test = self._require_test(storage, str(request.test_id))
+            before = (test.revision, test.status, test.active_seconds, test.result is not None)
             update_test(test, test.typed, test.revision, elapsed(test, now) >= test.duration, now)
-            storage.save(test)
-            if request.device_id:
+            # Plain reads skip the write unless the clock actually changed the state.
+            if before != (test.revision, test.status, test.active_seconds, test.result is not None):
+                storage.save(test)
+            if request.device_id and test.result:
                 self._record_result(test, str(request.device_id), now.isoformat(), test_storage=storage)
         return self._response(test, now, request.word_by_word, include_words=not request.compact)
 
-    def authorize(self, test_id: str) -> None:
-        test = self.live_tests.get(test_id) or self.prepared_tests.peek(test_id)
-        if test is not None:
-            self.require_owner(test)
-            return
+    def apply_inputs(self, test_id: str, batch: TypingBatchRequest) -> dict:
+        """Apply a key batch in one transaction; the database is the shared state."""
+        device_id = device_context.get()
+        if str(batch.device_id) != device_id:
+            raise TypingTestError("device_mismatch")
+        now = utc_now()
         with self.test_repository.transaction() as storage:
-            self._require_test(storage, test_id)
-
-    def set_duration(self, test: TypingTest, value: int) -> None:
-        self.require_owner(test)
-        if test.status != SessionStatus.READY or test.typed:
-            raise TypingTestError("not_configurable")
-        test.duration = self._duration(value)
-
-    def persist(self, test: TypingTest, device_id: str) -> None:
-        self.require_owner(test)
-        # In Postgres, the test and durable statistics commit together. A final
-        # frame is sent only after this transaction succeeds.
-        with self.test_repository.transaction() as storage:
+            test = self._require_test(storage, test_id)
+            for entry in batch.inputs:
+                apply_input(test, entry.key, entry.sequence, entry.word_by_word, now)
             storage.save(test)
             if test.result:
-                self._record_result(test, device_id, utc_now().isoformat(), test_storage=storage)
+                self._record_result(test, device_id, now.isoformat(), test_storage=storage)
+        return self._frame(test, now, batch.inputs[-1].word_by_word)
+
+    def change_duration(self, test_id: str, request: TypingDurationRequest) -> dict:
+        if str(request.device_id) != device_context.get():
+            raise TypingTestError("device_mismatch")
+        now = utc_now()
+        with self.test_repository.transaction() as storage:
+            test = self._require_test(storage, test_id)
+            if test.status != SessionStatus.READY or test.typed:
+                raise TypingTestError("not_configurable")
+            test.duration = self._duration(request.duration)
+            storage.save(test)
+        return self._frame(test, now, False, include_duration=True)
+
+    def _frame(self, test: TypingTest, now, word_by_word: bool, *, include_duration=False) -> dict:
+        # Static prompt/options are sent once by prepare; frames carry state only.
+        excluded = {"text": True, "punctuation": True, "numbers": True, "difficulty": True,
+                    "language": True, "duration": True, "view": {"words": True}}
+        if include_duration:
+            excluded.pop("duration")
+        return self._response(test, now, word_by_word, include_words=False).model_dump(
+            mode="json", exclude={"data": excluded})
 
     @staticmethod
     def _require_test(storage, test_id: str) -> TypingTest:
