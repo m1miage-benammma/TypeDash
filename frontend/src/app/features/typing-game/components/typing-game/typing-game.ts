@@ -8,7 +8,6 @@ import { I18nService } from '../../../../core/services/i18n.service';
 import { DeviceIdentityService } from '../../../../core/services/device-identity.service';
 import { PreferencesService, writeLocal } from '../../../../core/services/preferences.service';
 import { RegistrationModal } from '../../../identity/components/registration-modal/registration-modal';
-import { ConfirmationModal } from '../../../../shared/components/confirmation-modal/confirmation-modal';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { Difficulty } from '../../models/test-options';
 import { PrepareTestRequest } from '../../requests/typing-test.request';
@@ -23,7 +22,7 @@ import { AnalyticsService } from '../../../../core/analytics/analytics.service';
 
 @Component({
   selector: 'td-typing-game',
-  imports: [DecimalPipe, Icon, RegistrationModal, ConfirmationModal, TypingInputComponent, SessionResults],
+  imports: [DecimalPipe, Icon, RegistrationModal, TypingInputComponent, SessionResults],
   templateUrl: './typing-game.html',
   styleUrl: './typing-game.css',
 })
@@ -52,7 +51,6 @@ export class TypingGame {
   readonly loadError = signal(false);
   readonly offline = signal(false);
   readonly pasteHint = signal(false);
-  readonly restartModal = signal(false);
   readonly customOpen = signal(false);
   readonly customDraft = signal('');
   readonly durationError = signal<'durationMax' | 'durationInvalid' | null>(null);
@@ -68,7 +66,7 @@ export class TypingGame {
   readonly canType = computed(() => this.test()?.view.can_type === true
     && this.test()?.language === this.preferences.language()
     && !this.loading() && !this.loadError()
-    && !this.restartModal() && !this.registrationModal());
+    && !this.registrationModal());
   readonly customSelected = computed(() => !this.durations().includes(Number(this.options().duration)));
   readonly singleLineMode = computed(() => this.isMobile() || this.preferences.singleLine());
   private readonly displayNow = signal(performance.now());
@@ -359,11 +357,6 @@ export class TypingGame {
   }
 
   focusInput(): void { this.keyboard?.focus(); }
-
-  confirmRestart(): void {
-    this.restartModal.set(false);
-    this.prepare();
-  }
 
   private remember(id: string): void {
     try { sessionStorage.setItem('typedash.active', JSON.stringify({ id })); }

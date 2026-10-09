@@ -90,7 +90,6 @@
   "close": "Fermer",
   "loadingSession": "Chargement de la séance…",
   "sessionLoadFailed": "Impossible de charger cette séance. Réessayez.",
-  "restartConfirm": "Recommencer ce test ? La tentative actuelle sera abandonnée.",
   "registrationTitle": "Enregistrez vos progrès",
   "registrationHint": "Choisissez un nom pour cet appareil afin de conserver votre historique.",
   "username": "Nom d’utilisateur",

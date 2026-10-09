@@ -1,8 +1,3 @@
-@if (restartModal()) {
-  <td-confirmation-modal [title]="t('restart')" [message]="t('restartConfirm')"
-    (confirmed)="confirmRestart()" (cancelled)="restartModal.set(false)" />
-}
-
 @if (registrationModal()) {
   <td-registration-modal (registered)="registrationModal.set(false)" />
 }
@@ -131,7 +126,7 @@
           <span>{{ t(engaged() ? (running() ? 'runningHint' : 'pausedHint') : 'readyHint') }}</span>
         </div>
         @if (engaged()) {
-          <button class="secondary-button" (click)="restartModal.set(true)">{{ t('restart') }} <td-icon name="reset" /></button>
+          <button class="secondary-button" (click)="prepare()">{{ t('restart') }} <td-icon name="reset" /></button>
         }
       </div>
     </div>

@@ -1,7 +1,7 @@
 from functools import lru_cache
 import json
 from pathlib import Path
-from random import SystemRandom
+from random import Random
 
 from app.models.enums import Difficulty, Language
 
@@ -25,6 +25,7 @@ class PromptService:
     def __init__(self):
         # Load public, immutable banks before the first typing request.
         _word_banks()
+        self.random = Random()
 
     def generate(
         self,
@@ -34,30 +35,29 @@ class PromptService:
         punctuation: bool = False,
         numbers: bool = False,
     ) -> str:
-        random = SystemRandom()
         word_count = max(160, duration * 8)
         bank = _word_banks()[str(language)][str(difficulty)]
+        digits = {
+            Difficulty.EASY: 2,
+            Difficulty.MEDIUM: 3,
+            Difficulty.HARD: 4,
+        }[difficulty]
         tokens: list[str] = []
         previous = ""
 
         for index in range(word_count):
-            word = random.choice(bank)
+            word = self.random.choice(bank)
             while word == previous:
-                word = random.choice(bank)
+                word = self.random.choice(bank)
             previous = word
 
             if punctuation and index % 4 == 2:
-                word += random.choice(_PUNCTUATION)
+                word += self.random.choice(_PUNCTUATION)
             tokens.append(word)
 
             if numbers and index % 7 == 3:
-                digits = {
-                    Difficulty.EASY: 2,
-                    Difficulty.MEDIUM: 3,
-                    Difficulty.HARD: 4,
-                }[difficulty]
                 tokens.append(
-                    str(random.randrange(10 ** (digits - 1), 10**digits))
+                    str(self.random.randrange(10 ** (digits - 1), 10**digits))
                 )
 
         return " ".join(tokens)

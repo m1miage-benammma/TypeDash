@@ -23,9 +23,12 @@ export class Leaderboard {
   constructor() {
     effect(onCleanup => {
       if (!this.identity.initialized()) return;
-      this.identity.profile();
+      const profile = this.identity.profile();
+      const cacheKey = profile
+        ? `${profile.username}:${profile.summary.sessions}:${profile.summary.best_wpm}:${profile.summary.average_wpm}`
+        : 'anonymous';
       this.failed.set(false);
-      const subscription = this.api.get().subscribe({
+      const subscription = this.api.get(cacheKey).subscribe({
         next: data => this.data.set(data), error: () => this.failed.set(true),
       });
       onCleanup(() => subscription.unsubscribe());

@@ -11,11 +11,12 @@ async function compile(path, prelude) {
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 }
 
+const template = await readFile(new URL('../src/app/features/typing-game/components/typing-game/typing-game.html', import.meta.url), 'utf8');
 const { TypingGame } = await compile('../src/app/features/typing-game/components/typing-game/typing-game.ts', `
 const Component = () => target => target;
 const ViewChild = () => () => {};
 const writeLocal = () => {};
-const DecimalPipe = 0, Icon = 0, RegistrationModal = 0, ConfirmationModal = 0,
+const DecimalPipe = 0, Icon = 0, RegistrationModal = 0,
   TypingInputComponent = 0, SessionResults = 0;
 `);
 
@@ -57,6 +58,11 @@ test('duration selection preserves the session and words without preparing again
   assert.equal(game.test().remaining_seconds, 30);
   assert.deepEqual(game.durationFrames, [30]);
   assert.deepEqual(game.requests, []);
+});
+
+test('restart starts a new test directly without opening a confirmation modal', () => {
+  assert.match(template, /class="secondary-button" \(click\)="prepare\(\)"[^>]*>\{\{ t\('restart'\) \}\}/);
+  assert.doesNotMatch(template, /restartModal|restartConfirm/);
 });
 
 test('rapid controls merge with the latest selection rather than old confirmed state', () => {

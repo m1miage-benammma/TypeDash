@@ -90,7 +90,6 @@
   "close": "Close",
   "loadingSession": "Loading session…",
   "sessionLoadFailed": "We could not load this session. Try again.",
-  "restartConfirm": "Restart this test? Your current attempt will be discarded.",
   "registrationTitle": "Save your progress",
   "registrationHint": "Choose a username for this device to keep your typing history.",
   "username": "Username",
