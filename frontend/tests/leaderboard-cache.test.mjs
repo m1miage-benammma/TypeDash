@@ -30,11 +30,11 @@ const { LeaderboardApiService } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`
 );
 
-test('leaderboard is reused until the player profile changes', async () => {
+test('leaderboard is reused until an explicit profile refresh', async () => {
   const api = new LeaderboardApiService();
-  await rxjs.firstValueFrom(api.get('player:3:50'));
-  await rxjs.firstValueFrom(api.get('player:3:50'));
+  await rxjs.firstValueFrom(api.get());
+  await rxjs.firstValueFrom(api.get());
   assert.equal(requests, 1);
-  await rxjs.firstValueFrom(api.get('player:4:55'));
+  await rxjs.firstValueFrom(api.get(true));
   assert.equal(requests, 2);
 });

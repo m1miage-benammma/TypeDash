@@ -8,12 +8,10 @@ import { Leaderboards } from '../responses/leaderboard.response';
 @Injectable({ providedIn: 'root' })
 export class LeaderboardApiService {
   private readonly http = inject(HttpClient);
-  private cacheKey = '';
   private cached?: Observable<Leaderboards>;
 
-  get(cacheKey: string): Observable<Leaderboards> {
-    if (this.cached && this.cacheKey === cacheKey) return this.cached;
-    this.cacheKey = cacheKey;
+  get(refresh = false): Observable<Leaderboards> {
+    if (this.cached && !refresh) return this.cached;
     this.cached = this.http.get<ApiResponse<Leaderboards>>(environment.apiUrl + '/leaderboard').pipe(
       timeout(15000), map(response => response.data),
       shareReplay({ bufferSize: 1, refCount: false }),

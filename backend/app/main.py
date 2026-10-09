@@ -120,7 +120,7 @@ app.add_middleware(SecurityMiddleware)
 
 
 app.include_router(calculator_router)
-app.include_router(create_auth_router(device_service))
+app.include_router(create_auth_router())
 app.include_router(health_router, prefix="/api")
 app.include_router(create_typing_router(typing_service))
 app.include_router(create_devices_router(device_service))
